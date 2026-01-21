@@ -3,8 +3,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from backend_costeo.database import engine, SessionLocal
-from backend_costeo.models import Base, Producto, CostoItem, CostoHistorial
+import sys
+from pathlib import Path
+
+# --- Ajuste automático de imports según entorno (Render o local) ---
+BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
+if str(BASE_DIR.parent) not in sys.path:
+    sys.path.append(str(BASE_DIR.parent))
+
+try:
+    # Cuando se ejecuta dentro del paquete (Render)
+    from backend_costeo.database import engine, SessionLocal
+    from backend_costeo.models import Base, Producto, CostoItem, CostoHistorial
+except ModuleNotFoundError:
+    # Cuando se ejecuta localmente (PyInstaller)
+    from database import engine, SessionLocal
+    from models import Base, Producto, CostoItem, CostoHistorial
+
 
 app = FastAPI(title="API Costeo DCM")
 
