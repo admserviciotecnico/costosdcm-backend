@@ -33,6 +33,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Endpoint raíz para verificar que el backend está activo ---
+@app.get("/")
+def root():
+    return {"message": "Backend de Costeo DCM activo ✅"}
+
 Base.metadata.create_all(bind=engine)
 
 
