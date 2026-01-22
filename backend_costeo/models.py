@@ -3,15 +3,16 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from backend_costeo.database import Base
 
-
 class Producto(Base):
     __tablename__ = "productos"
 
     id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String, index=True)
-    denominacion = Column(String)
-    linea = Column(String, index=True)
-    serie = Column(String, index=True)
+    codigo = Column(String, unique=True, nullable=False)
+    nombre = Column(String, nullable=False)
+    linea = Column(String, nullable=False)
+    serie = Column(String, nullable=True)
+    descripcion = Column(String, nullable=True)
+
 
 
 class CostoItem(Base):
