@@ -63,14 +63,40 @@ def listar_costos():
 from datetime import datetime
 
 @app.post("/api/costos")
-def crear_costo(item: dict):
-    db = SessionLocal()
-    nuevo = CostoItem(**item)
-    db.add(nuevo)
-    db.commit()
-    db.refresh(nuevo)
-    db.close()
-    return nuevo
+def crear_costo_item(item_data: dict, db: Session = Depends(get_db)):
+    try:
+        # 🧩 Normalizar campos para que coincidan con el modelo
+        mapping = {
+            "nombre": "denominacion",
+            "costoFabrica": "costo_fabrica",
+            "costoFOB": "costo_fob",
+            "coef": "coeficiente",
+        }
+        normalizado = {}
+        for k, v in item_data.items():
+            normalizado[mapping.get(k, k)] = v
+
+        # 🧠 Crear el objeto
+        nuevo_item = CostoItem(**normalizado)
+        db.add(nuevo_item)
+        db.flush()  # asigna el ID antes de crear historial
+
+        # 🕓 Registrar historial inicial
+        db.add(CostoHistorial(
+            costo_item_id=nuevo_item.id,
+            costo_fabrica=nuevo_item.costo_fabrica,
+            costo_fob=nuevo_item.costo_fob,
+            coeficiente=nuevo_item.coeficiente,
+        ))
+
+        db.commit()
+        db.refresh(nuevo_item)
+        return {"success": True, "data": nuevo_item.id}
+
+    except Exception as e:
+        db.rollback()
+        print("💥 Error al crear ítem de costo:", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.delete("/api/costos/{item_id}")
