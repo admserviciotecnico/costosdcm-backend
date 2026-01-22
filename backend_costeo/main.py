@@ -27,11 +27,16 @@ app = FastAPI(title="API Costeo DCM")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://costosdcm.base44.app",  # dominio de tu app frontend
+        "http://localhost:8001",         # para pruebas locales
+        "http://127.0.0.1:8001"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # --- Endpoint raíz para verificar que el backend está activo ---
 @app.get("/")
