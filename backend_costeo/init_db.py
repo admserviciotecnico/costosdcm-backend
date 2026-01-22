@@ -52,14 +52,18 @@ else:
             catalogo = json.load(f)
 
         count_prod = 0
-        for linea, series in catalogo.items():
-            for serie, productos in series.items():
+        for linea, series in catalogo.items():  # 👈 "Control de acceso", "Parking", etc.
+            for serie, productos in series.items():  # 👈 "GM-GS Series", "MC Series", etc.
                 for p in productos:
+                    # Asegurarse de usar "nombre" correctamente
+                    nombre = p.get("nombre") or p.get("denominacion", "Sin nombre")
+
                     db.add(Producto(
                         codigo=p.get("codigo"),
-                        denominacion=p.get("denominacion"),
+                        nombre=nombre,              # ✅ ahora sí coincide con tu modelo
                         linea=linea,
-                        serie=serie
+                        serie=serie,
+                        descripcion=nombre          # opcional, para completar el campo
                     ))
                     count_prod += 1
 
