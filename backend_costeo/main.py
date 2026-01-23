@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 import sys
 from pathlib import Path
+from sqlalchemy.orm import Session
+from backend_costeo import models
 
 # --- Ajuste automático de imports según entorno (Render o local) ---
 BASE_DIR = Path(__file__).resolve().parent
@@ -45,6 +47,12 @@ def root():
 
 Base.metadata.create_all(bind=engine)
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @app.get("/api/productos")
 def listar_productos():
@@ -140,7 +148,7 @@ class CostoUpdate(BaseModel):
     coeficiente: Optional[float] = None
 
 
-@app.put("/api/costos/{item_id}")
+@app.put("/api/costos/{item_id}", response_model_exclude_unset=True)
 def actualizar_costo_item(item_id: int, datos: dict):
     db = SessionLocal()
     item = db.query(CostoItem).filter(CostoItem.id == item_id).first()
