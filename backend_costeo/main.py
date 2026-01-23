@@ -79,6 +79,7 @@ def crear_costo_item(item_data: dict, db: Session = Depends(get_db)):
             "costoFabrica": "costo_fabrica",
             "costoFOB": "costo_fob",
             "coef": "coeficiente",
+            "unidad_medida": "unidad",
         }
         normalizado = {}
         for k, v in item_data.items():
