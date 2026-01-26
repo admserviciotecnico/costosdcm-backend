@@ -7,8 +7,8 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-       - name: Enviar solicitud al backend
+        - name: Enviar solicitud al backend
   run: |
-    echo "Ping automático backend - $(date)"
-    curl https://costosdcm-backend.onrender.com || exit 1
+    echo "Ping automático backend - activado $(date)"
+    curl https://costosdcm-backend.onrender.com/ || exit 1
 
