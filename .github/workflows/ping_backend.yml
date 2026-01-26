@@ -12,4 +12,4 @@ jobs:
       - name: Ping al backend de Costeo DCM
         run: |
           echo "🔄 Verificando backend..."
-          curl --fail --max-time 20 curl --fail https://costosdcm-backend.onrender.com/test-404
+          curl --fail --max-time 20 curl --fail https://costosdcm-backend.onrender.com
