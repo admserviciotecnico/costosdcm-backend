@@ -13,4 +13,4 @@ jobs:
       - name: Enviar solicitud al backend
         run: |
           echo "Ping al backend de Costeo DCM..."
-          curl -I https://costosdcm-backend.onrender.com || true
+          curl https://costosdcm-backend.onrender.com || true
