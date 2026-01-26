@@ -2,15 +2,14 @@ name: Mantener Backend Activo (Render)
 
 on:
   schedule:
-    # Ejecutar cada 10 minutos
     - cron: "*/10 * * * *"
-  workflow_dispatch: # Permite ejecutarlo manualmente también
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Enviar solicitud al backend
+      - name: Ping al backend de Costeo DCM
         run: |
-          echo "Ping al backend de Costeo DCM..."
-          curl https://costosdcm-backend.onrender.com || true
+          echo "🔄 Verificando backend..."
+          curl --fail --max-time 20 https://costosdcm-backend.onrender.com
