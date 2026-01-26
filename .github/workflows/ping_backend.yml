@@ -9,7 +9,7 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping al backend de Costeo DCM
+      - name: Ping automático backend Costeo DCM
         run: |
-          echo "🔄 Verificando backend..."
-          curl --fail --max-time 20 curl --fail https://costosdcm-backend.onrender.com
+          echo "Ping automático ejecutado en $(date)"
+          curl -f https://costosdcm-backend.onrender.com || exit 1
