@@ -6,7 +6,27 @@ from typing import Optional
 import sys
 from pathlib import Path
 from sqlalchemy.orm import Session
-from backend_costeo import models
+
+try:
+    # Cuando se ejecuta dentro del paquete (Render)
+    from backend_costeo.database import engine, SessionLocal
+    from backend_costeo.models import (
+        Base,
+        Producto,
+        CostoItem,
+        CostoHistorial,
+        ListaPrecioConfig,
+    )
+except ModuleNotFoundError:
+    # Cuando se ejecuta localmente
+    from database import engine, SessionLocal
+    from models import (
+        Base,
+        Producto,
+        CostoItem,
+        CostoHistorial,
+        ListaPrecioConfig,
+    )
 
 # --- Ajuste automático de imports según entorno (Render o local) ---
 BASE_DIR = Path(__file__).resolve().parent
@@ -14,16 +34,6 @@ if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 if str(BASE_DIR.parent) not in sys.path:
     sys.path.append(str(BASE_DIR.parent))
-
-try:
-    # Cuando se ejecuta dentro del paquete (Render)
-    from backend_costeo.database import engine, SessionLocal
-    from backend_costeo.models import Base, Producto, CostoItem, CostoHistorial
-except ModuleNotFoundError:
-    # Cuando se ejecuta localmente (PyInstaller)
-    from database import engine, SessionLocal
-    from models import Base, Producto, CostoItem, CostoHistorial
-
 
 app = FastAPI(title="API Costeo DCM")
 
@@ -38,6 +48,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+class ListaPrecioCreate(BaseModel):
+    producto_codigo: str
+    producto_nombre: str
+    eventuales: float
+    garantia: float
+    burden: float
+    gp_cliente: float
+    gp_integrador: float
+    costo_directo: float
+    costo_total: float
+    precio_cliente: float
+    precio_integrador: float
 
 
 # --- Endpoint raíz para verificar que el backend está activo ---
@@ -55,18 +77,14 @@ def get_db():
         db.close()
 
 @app.get("/api/productos")
-def listar_productos():
-    db = SessionLocal()
-    productos = db.query(Producto).all()
-    db.close()
-    return productos
+def listar_productos(db: Session = Depends(get_db)):
+    return db.query(Producto).all()
+
 
 @app.get("/api/costos")
-def listar_costos():
-    db = SessionLocal()
-    items = db.query(CostoItem).all()
-    db.close()
-    return items
+def listar_costos(db: Session = Depends(get_db)):
+    return db.query(CostoItem).all()
+
 
 from datetime import datetime
 
@@ -109,53 +127,87 @@ def crear_costo_item(item_data: dict, db: Session = Depends(get_db)):
 
 
 @app.delete("/api/costos/{item_id}")
-def eliminar_costo(item_id: int):
-    db = SessionLocal()
+def eliminar_costo(item_id: int, db: Session = Depends(get_db)):
     item = db.query(CostoItem).filter(CostoItem.id == item_id).first()
     if not item:
-        db.close()
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
+
     db.delete(item)
     db.commit()
-    db.close()
-    return {"ok": True, "mensaje": "Ítem eliminado correctamente"}
+    return {"ok": True}
 
-costeos_guardados = []
 
 @app.post("/api/costeos")
-def guardar_costeo(costeo: dict):
-    costeo["fecha"] = datetime.now().isoformat()
-    costeos_guardados.append(costeo)
+def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db)):
+    """
+    Alias de compatibilidad:
+    Guarda configuraciones de Lista de Precios
+    usando el endpoint histórico /api/costeos
+    """
+    nueva = ListaPrecioConfig(**data.dict())
+    db.add(nueva)
+    db.commit()
+    db.refresh(nueva)
+
     return {
         "ok": True,
-        "mensaje": "Costeo guardado correctamente",
-        "id": len(costeos_guardados) - 1
+        "mensaje": "Configuración de precios guardada correctamente",
+        "id": nueva.id,
     }
 
-@app.get("/api/costos/{item_id}/historial")
-def historial_costos(item_id: int):
-    db = SessionLocal()
-    hist = db.query(CostoHistorial)\
-        .filter(CostoHistorial.costo_item_id == item_id)\
-        .order_by(CostoHistorial.fecha.desc())\
-        .all()
-    db.close()
-    return hist
 
+@app.get("/api/costos/{item_id}/historial")
+def historial_costos(item_id: int, db: Session = Depends(get_db)):
+    return (
+        db.query(CostoHistorial)
+        .filter(CostoHistorial.costo_item_id == item_id)
+        .order_by(CostoHistorial.fecha.desc())
+        .all()
+    )
+
+
+@app.post("/api/lista-precios")
+def guardar_lista_precios(data: ListaPrecioCreate, db: Session = Depends(get_db)):
+    nueva = ListaPrecioConfig(**data.dict())
+    db.add(nueva)
+    db.commit()
+    db.refresh(nueva)
+    return {
+        "ok": True,
+        "id": nueva.id
+    }
+
+@app.get("/api/lista-precios/producto/{codigo}")
+def listar_por_producto(codigo: str, db: Session = Depends(get_db)):
+    return (
+        db.query(ListaPrecioConfig)
+        .filter(ListaPrecioConfig.producto_codigo == codigo)
+        .order_by(ListaPrecioConfig.creada_en.desc())
+        .all()
+    )
+
+@app.delete("/api/lista-precios/{lista_id}")
+def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db)):
+    lista = db.query(ListaPrecioConfig).filter(ListaPrecioConfig.id == lista_id).first()
+
+    if not lista:
+        raise HTTPException(status_code=404, detail="Configuración no encontrada")
+
+    db.delete(lista)
+    db.commit()
+    return {"ok": True}
 
 class CostoUpdate(BaseModel):
     costo_fabrica: Optional[float] = None
     costo_fob: Optional[float] = None
     coeficiente: Optional[float] = None
 
+@app.put("/api/costos/{item_id}")
+def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_db)):
 
-@app.put("/api/costos/{item_id}", response_model_exclude_unset=True)
-def actualizar_costo_item(item_id: int, datos: dict):
-    db = SessionLocal()
     item = db.query(CostoItem).filter(CostoItem.id == item_id).first()
 
     if not item:
-        db.close()
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
 
     # --- 1️⃣ Guardar historial solo si se modifican valores de costo ---
@@ -179,7 +231,6 @@ def actualizar_costo_item(item_id: int, datos: dict):
     # --- 3️⃣ Guardar cambios ---
     db.commit()
     db.refresh(item)
-    db.close()
 
     mensaje = "Ítem actualizado correctamente"
     if modificar_historial:
@@ -189,44 +240,48 @@ def actualizar_costo_item(item_id: int, datos: dict):
 
 
 @app.post("/api/productos")
-def crear_producto(producto: dict):
-    db = SessionLocal()
+def crear_producto(producto: dict, db: Session = Depends(get_db)):
     nuevo = Producto(**producto)
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
-    db.close()
     return nuevo
 
 
+
 @app.put("/api/productos/{producto_id}")
-def actualizar_producto(producto_id: int, datos: dict):
-    db = SessionLocal()
+def actualizar_producto(
+    producto_id: int,
+    datos: dict,
+    db: Session = Depends(get_db)
+):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
+
     if not prod:
-        db.close()
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
     for campo, valor in datos.items():
-        setattr(prod, campo, valor)
+        if hasattr(prod, campo):
+            setattr(prod, campo, valor)
 
     db.commit()
     db.refresh(prod)
-    db.close()
     return prod
 
-
 @app.delete("/api/productos/{producto_id}")
-def eliminar_producto(producto_id: int):
-    db = SessionLocal()
+def eliminar_producto(
+    producto_id: int,
+    db: Session = Depends(get_db)
+):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
+
     if not prod:
-        db.close()
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+
     db.delete(prod)
     db.commit()
-    db.close()
     return {"ok": True, "mensaje": "Producto eliminado correctamente"}
+
 
 if __name__ == "__main__":
     import uvicorn

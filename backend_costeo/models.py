@@ -1,7 +1,11 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from backend_costeo.database import Base
+
+try:
+    from backend_costeo.database import Base
+except ModuleNotFoundError:
+    from database import Base
 
 class Producto(Base):
     __tablename__ = "productos"
@@ -30,7 +34,37 @@ class CostoItem(Base):
     costo_fob = Column(Float, nullable=True)
     coeficiente = Column(Float, nullable=True)
 
-    historial = relationship("CostoHistorial", back_populates="costo_item")
+    historial = relationship(
+    "CostoHistorial",
+    back_populates="costo_item",
+    cascade="all, delete-orphan"
+)
+
+
+class ListaPrecioConfig(Base):
+    __tablename__ = "listas_precios"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Producto asociado
+    producto_codigo = Column(String, index=True, nullable=False)
+    producto_nombre = Column(String, nullable=False)
+
+    # Parámetros de cálculo
+    eventuales = Column(Float, nullable=False)
+    garantia = Column(Float, nullable=False)
+    burden = Column(Float, nullable=False)
+    gp_cliente = Column(Float, nullable=False)
+    gp_integrador = Column(Float, nullable=False)
+
+    # Resultados
+    costo_directo = Column(Float, nullable=False)
+    costo_total = Column(Float, nullable=False)
+    precio_cliente = Column(Float, nullable=False)
+    precio_integrador = Column(Float, nullable=False)
+
+    # Metadata
+    creada_en = Column(DateTime, default=datetime.utcnow)
 
 
 class CostoHistorial(Base):
