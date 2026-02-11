@@ -33,18 +33,18 @@ def seed_if_empty():
         # =========================
         # PRODUCTOS (JSON ANIDADO)
         # =========================
-        productos_data = load_json("productos_catalogo.json")
+        productos_json = load_json("productos_catalogo.json")
 
-        if productos_data:
-            for categoria, series in productos_data.items():
-                for serie, productos in series.items():
-                    for prod in productos:
-                        db.add(Producto(
-                            codigo=prod["codigo"],
-                            nombre=prod["nombre"],
-                            categoria=categoria,
-                            serie=serie
-                        ))
+        for linea, series in productos_json.items():
+            for serie, productos in series.items():
+                for producto in productos:
+                    db.add(Producto(
+                        codigo=producto["codigo"],
+                        nombre=producto["nombre"],
+                        linea=linea,
+                        serie=serie
+                    ))
+
 
         # =========================
         # COSTOS (JSON ANIDADO)
