@@ -1,0 +1,19 @@
+🚀 Pasos para usar la aplicación
+
+Abrí el navegador web.
+
+Ingresá a la siguiente dirección:
+👉 https://costosdcm.base44.app
+
+Esperá unos segundos hasta que la app cargue completamente.
+
+¡Listo!
+Ya podés utilizar todas las funciones:
+
+Crear o editar productos
+
+Crear o editar ítems de costo
+
+Consultar y eliminar registros
+
+URL para cargar API: https://costosdcm-backend.onrender.com
