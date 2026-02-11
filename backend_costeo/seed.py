@@ -55,18 +55,18 @@ def seed_if_empty():
             for subtipo, items in subtipos.items():
                 for item in items:
 
-                    normalizado = {
-                        "codigo": item.get("codigo"),
-                        "denominacion": item.get("nombre"),
-                        "tipo": tipo,
-                        "subtipo": subtipo,
-                        "unidad": item.get("unidad"),
-                        "costo_fabrica": item.get("costo_fabrica", 0),
-                        "costo_fob": item.get("costo_fob", 0),
-                        "coeficiente": item.get("coeficiente", 1),
-                    }
+                    nuevo = CostoItem(
+                        codigo=item.get("codigo"),
+                        denominacion=item.get("denominacion"),
+                        tipo=tipo,
+                        subtipo=subtipo,
+                        unidad=item.get("unidad"),
+                        coeficiente=item.get("coeficiente"),
+                        costo_fob=item.get("costo_fob"),
+                        costo_fabrica=item.get("costo_fabrica"),
+                    )
 
-            db.add(CostoItem(**normalizado))
+                    db.add(nuevo)
 
 
 

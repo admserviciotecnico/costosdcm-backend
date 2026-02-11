@@ -26,7 +26,7 @@ class CostoItem(Base):
     tipo = Column(String, index=True)
     subtipo = Column(String, index=True)
     item = Column(Integer, nullable=True)
-    codigo = Column(String, nullable=True)
+    codigo = Column(String, unique=True, nullable=True)
     denominacion = Column(String)
     unidad = Column(String)
 
