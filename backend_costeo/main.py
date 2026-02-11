@@ -67,6 +67,16 @@ class ListaPrecioCreate(BaseModel):
 def root():
     return {"message": "Backend de Costeo DCM activo ✅"}
 
+import os
+from pathlib import Path
+
+DB_PATH = "/data/costeo.db"
+
+if os.getenv("RESET_DB") == "true":
+    if Path(DB_PATH).exists():
+        os.remove(DB_PATH)
+        print("🗑 Base de datos eliminada automáticamente")
+
 Base.metadata.create_all(bind=engine)
 
 from backend_costeo.seed import seed_if_empty
