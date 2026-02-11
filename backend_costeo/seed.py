@@ -49,21 +49,23 @@ def seed_if_empty():
         # =========================
         # COSTOS (JSON ANIDADO)
         # =========================
-        costos_data = load_json("costos_generales_full.json")
+        costos_json = load_json("costos_generales_full.json")
 
-        if costos_data:
-            for categoria, subcategorias in costos_data.items():
-                for subcat, items in subcategorias.items():
-                    for item in items:
-                        db.add(CostoItem(
-                            denominacion=item.get("denominacion"),
-                            unidad=item.get("unidad"),
-                            costo_fabrica=item.get("costo_fabrica", 0),
-                            costo_fob=item.get("costo_fob", 0),
-                            coeficiente=item.get("coeficiente", 1),
-                            categoria=categoria,
-                            subcategoria=subcat
-                        ))
+        for item in costos_json:
+
+            normalizado = {
+                "codigo": item.get("codigo"),
+                "denominacion": item.get("nombre"),
+                "tipo": item.get("categoria"),   # 👈 aquí el fix
+                "subtipo": item.get("subtipo"),
+                "unidad": item.get("unidad"),
+                "costo_fabrica": item.get("costo_fabrica", 0),
+                "costo_fob": item.get("costo_fob", 0),
+                "coeficiente": item.get("coeficiente", 1),
+            }
+
+        db.add(CostoItem(**normalizado))
+
 
         db.commit()
         print("✅ Seed completado correctamente")
