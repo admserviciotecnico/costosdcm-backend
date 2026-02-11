@@ -51,20 +51,23 @@ def seed_if_empty():
         # =========================
         costos_json = load_json("costos_generales_full.json")
 
-        for item in costos_json:
+        for tipo, subtipos in costos_json.items():
+            for subtipo, items in subtipos.items():
+                for item in items:
 
-            normalizado = {
-                "codigo": item.get("codigo"),
-                "denominacion": item.get("nombre"),
-                "tipo": item.get("categoria"),   # 👈 aquí el fix
-                "subtipo": item.get("subtipo"),
-                "unidad": item.get("unidad"),
-                "costo_fabrica": item.get("costo_fabrica", 0),
-                "costo_fob": item.get("costo_fob", 0),
-                "coeficiente": item.get("coeficiente", 1),
-            }
+                    normalizado = {
+                        "codigo": item.get("codigo"),
+                        "denominacion": item.get("nombre"),
+                        "tipo": tipo,
+                        "subtipo": subtipo,
+                        "unidad": item.get("unidad"),
+                        "costo_fabrica": item.get("costo_fabrica", 0),
+                        "costo_fob": item.get("costo_fob", 0),
+                        "coeficiente": item.get("coeficiente", 1),
+                    }
 
-        db.add(CostoItem(**normalizado))
+            db.add(CostoItem(**normalizado))
+
 
 
         db.commit()
