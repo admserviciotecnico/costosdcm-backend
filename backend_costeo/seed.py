@@ -5,10 +5,8 @@ from sqlalchemy.orm import Session
 from backend_costeo.database import SessionLocal
 from backend_costeo.models import Producto, CostoItem, ListaPrecioConfig
 
-
 BASE_DIR = Path(__file__).resolve().parent
-SEED_DIR = BASE_DIR / "data_seed"
-
+SEED_DIR = BASE_DIR.parent / "data_seed"
 
 def load_json(filename):
     path = SEED_DIR / filename
@@ -30,11 +28,11 @@ def seed_if_empty():
         print("🌱 Inicializando base de datos desde JSON...")
 
         # Productos
-        for item in load_json("productos.json"):
+        for item in load_json("producto_catalogo.json"):
             db.add(Producto(**item))
 
         # Costos
-        for item in load_json("costos_items.json"):
+        for item in load_json("costos_generales_full.json"):
             db.add(CostoItem(**item))
 
         # Listas de precios (opcional)
