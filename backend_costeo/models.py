@@ -41,29 +41,28 @@ class CostoItem(Base):
 )
 
 
+from sqlalchemy import Column, String, Float, DateTime
+
 class ListaPrecioConfig(Base):
     __tablename__ = "listas_precios"
 
-    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
 
-    # Producto asociado
-    producto_codigo = Column(String, index=True, nullable=False)
-    producto_nombre = Column(String, nullable=False)
+    producto_codigo = Column(String)
+    producto_nombre = Column(String)
 
-    # Parámetros de cálculo
-    eventuales = Column(Float, nullable=False)
-    garantia = Column(Float, nullable=False)
-    burden = Column(Float, nullable=False)
-    gp_cliente = Column(Float, nullable=False)
-    gp_integrador = Column(Float, nullable=False)
+    eventuales = Column(Float)
+    garantia = Column(Float)
+    burden = Column(Float)
+    gp_cliente = Column(Float)
+    gp_integrador = Column(Float)
 
-    # Resultados
-    costo_directo = Column(Float, nullable=False)
-    costo_total = Column(Float, nullable=False)
-    precio_cliente = Column(Float, nullable=False)
-    precio_integrador = Column(Float, nullable=False)
+    costo_directo = Column(Float)
+    costo_total = Column(Float)
+    precio_cliente = Column(Float)
+    precio_integrador = Column(Float)
 
-    # Metadata
     creada_en = Column(DateTime, default=datetime.utcnow)
 
 

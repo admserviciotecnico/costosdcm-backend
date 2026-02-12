@@ -6,6 +6,10 @@ from typing import Optional
 import sys
 from pathlib import Path
 from sqlalchemy.orm import Session
+from backend_costeo.schemas import (
+    ListaPrecioCreate,
+    ListaPrecioResponse
+)
 
 try:
     # Cuando se ejecuta dentro del paquete (Render)
@@ -180,16 +184,17 @@ def historial_costos(item_id: int, db: Session = Depends(get_db)):
     )
 
 
-@app.post("/api/lista-precios")
-def guardar_lista_precios(data: ListaPrecioCreate, db: Session = Depends(get_db)):
-    nueva = ListaPrecioConfig(**data.dict())
+@app.post("/api/lista-precios", response_model=ListaPrecioResponse)
+def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
+
+    nueva = ListaPrecioConfig(**data.model_dump())
+
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
-    return {
-        "ok": True,
-        "id": nueva.id
-    }
+
+    return nueva
+
 
 @app.get("/api/lista-precios/producto/{codigo}")
 def listar_por_producto(codigo: str, db: Session = Depends(get_db)):
@@ -200,13 +205,10 @@ def listar_por_producto(codigo: str, db: Session = Depends(get_db)):
         .all()
     )
 
-@app.get("/api/lista-precios")
-def listar_todas_las_listas(db: Session = Depends(get_db)):
-    return (
-        db.query(ListaPrecioConfig)
-        .order_by(ListaPrecioConfig.creada_en.desc())
-        .all()
-    )
+@app.get("/api/lista-precios", response_model=list[ListaPrecioResponse])
+def listar_listas(db: Session = Depends(get_db)):
+    return db.query(ListaPrecioConfig).all()
+
 
 @app.delete("/api/lista-precios/{lista_id}")
 def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db)):
