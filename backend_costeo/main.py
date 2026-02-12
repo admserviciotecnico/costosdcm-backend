@@ -11,12 +11,6 @@ from backend_costeo.schemas import (
     ListaPrecioResponse
 )
 
-
-import os
-
-if os.path.exists("costeo.db"):
-    os.remove("costeo.db")
-
 try:
     # Cuando se ejecuta dentro del paquete (Render)
     from backend_costeo.database import engine, SessionLocal
