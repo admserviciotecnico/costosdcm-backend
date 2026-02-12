@@ -216,7 +216,18 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
 
     nueva = ListaPrecioConfig(
         codigo=nuevo_codigo,
-        **data.model_dump()
+        nombre=data.nombre,  # 🔥 ASIGNAR EXPLÍCITAMENTE
+        producto_codigo=data.producto_codigo,
+        producto_nombre=data.producto_nombre,
+        eventuales=data.eventuales,
+        garantia=data.garantia,
+        burden=data.burden,
+        gp_cliente=data.gp_cliente,
+        gp_integrador=data.gp_integrador,
+        costo_directo=data.costo_directo,
+        costo_total=data.costo_total,
+        precio_cliente=data.precio_cliente,
+        precio_integrador=data.precio_integrador,
     )
 
     db.add(nueva)
@@ -224,6 +235,7 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
     db.refresh(nueva)
 
     return nueva
+
 
 
 
