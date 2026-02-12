@@ -200,6 +200,14 @@ def listar_por_producto(codigo: str, db: Session = Depends(get_db)):
         .all()
     )
 
+@app.get("/api/lista-precios")
+def listar_todas_las_listas(db: Session = Depends(get_db)):
+    return (
+        db.query(ListaPrecioConfig)
+        .order_by(ListaPrecioConfig.creada_en.desc())
+        .all()
+    )
+
 @app.delete("/api/lista-precios/{lista_id}")
 def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db)):
     lista = db.query(ListaPrecioConfig).filter(ListaPrecioConfig.id == lista_id).first()
