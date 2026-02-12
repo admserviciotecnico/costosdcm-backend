@@ -11,6 +11,12 @@ from backend_costeo.schemas import (
     ListaPrecioResponse
 )
 
+
+import os
+
+if os.path.exists("costeo.db"):
+    os.remove("costeo.db")
+
 try:
     # Cuando se ejecuta dentro del paquete (Render)
     from backend_costeo.database import engine, SessionLocal
@@ -184,16 +190,33 @@ def historial_costos(item_id: int, db: Session = Depends(get_db)):
     )
 
 
+from sqlalchemy import func
+
 @app.post("/api/lista-precios", response_model=ListaPrecioResponse)
 def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
 
-    nueva = ListaPrecioConfig(**data.model_dump())
+    # 🔹 Obtener último código
+    ultima = db.query(ListaPrecioConfig).order_by(
+        ListaPrecioConfig.codigo.desc()
+    ).first()
+
+    if ultima:
+        ultimo_num = int(ultima.codigo.replace("DCM", ""))
+        nuevo_codigo = f"DCM{ultimo_num + 1:03d}"
+    else:
+        nuevo_codigo = "DCM001"
+
+    nueva = ListaPrecioConfig(
+        codigo=nuevo_codigo,
+        **data.model_dump()
+    )
 
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
 
     return nueva
+
 
 
 @app.get("/api/lista-precios/producto/{codigo}")

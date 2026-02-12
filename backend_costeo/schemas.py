@@ -23,11 +23,24 @@ class ListaPrecioBase(BaseModel):
     precio_integrador: float
 
 
-class ListaPrecioCreate(ListaPrecioBase):
-    pass
+class ListaPrecioCreate(BaseModel):
+    nombre: str
+    producto_codigo: str
+    producto_nombre: str
+    eventuales: float
+    garantia: float
+    burden: float
+    gp_cliente: float
+    gp_integrador: float
+    costo_directo: float
+    costo_total: float
+    precio_cliente: float
+    precio_integrador: float
 
 
-class ListaPrecioResponse(ListaPrecioBase):
+
+class ListaPrecioResponse(ListaPrecioCreate):
+    codigo: str
     creada_en: datetime
 
     class Config:
