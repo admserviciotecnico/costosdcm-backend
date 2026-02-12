@@ -2,7 +2,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////data/costeo.db")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///./costeo.db"
+)
+
 
 
 engine = create_engine(
