@@ -23,19 +23,29 @@ class ListaPrecioBase(BaseModel):
     precio_integrador: float
 
 
+from pydantic import BaseModel
+from typing import List, Optional
+
 class ListaPrecioCreate(BaseModel):
-    nombre: str
+    nombre: str   # 🔥 AGREGAR ESTO
+
     producto_codigo: str
     producto_nombre: str
+
     eventuales: float
     garantia: float
     burden: float
     gp_cliente: float
     gp_integrador: float
+
     costo_directo: float
     costo_total: float
     precio_cliente: float
     precio_integrador: float
+
+    # si estás recibiendo items
+    items: Optional[list] = []
+
 
 
 
