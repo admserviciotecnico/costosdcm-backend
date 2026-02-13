@@ -1,50 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 # =========================
 # LISTA DE PRECIOS
 # =========================
 
-class ListaPrecioBase(BaseModel):
-    codigo: str
-    nombre: str
-    producto_codigo: str
-    producto_nombre: str
-    eventuales: float
-    garantia: float
-    burden: float
-    gp_cliente: float
-    gp_integrador: float
-    costo_directo: float
-    costo_total: float
-    precio_cliente: float
-    precio_integrador: float
-
-
-from pydantic import BaseModel
-from typing import List, Optional
-
-class ListaPrecioCreate(BaseModel):
-    nombre: str   # 🔥 AGREGAR ESTO
-
-    producto_codigo: str
-    producto_nombre: str
-
-    eventuales: float
-    garantia: float
-    burden: float
-    gp_cliente: float
-    gp_integrador: float
-
-    costo_directo: float
-    costo_total: float
-    precio_cliente: float
-    precio_integrador: float
-
-    # si estás recibiendo items
-
 class ListaPrecioCreate(BaseModel):
     nombre: str
 
@@ -62,11 +24,27 @@ class ListaPrecioCreate(BaseModel):
     precio_cliente: float
     precio_integrador: float
 
-    items: list | None = None
+    items: Optional[List[dict]] = None
 
-class ListaPrecioResponse(ListaPrecioCreate):
+
+class ListaPrecioResponse(BaseModel):
     codigo: str
+    nombre: str
+
+    producto_codigo: str
+    producto_nombre: str
+
+    eventuales: float
+    garantia: float
+    burden: float
+    gp_cliente: float
+    gp_integrador: float
+
+    costo_directo: float
+    costo_total: float
+    precio_cliente: float
+    precio_integrador: float
+
     creada_en: datetime
 
-class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
