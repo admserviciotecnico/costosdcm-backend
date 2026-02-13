@@ -6,6 +6,18 @@ from typing import Optional, List
 # =========================
 # LISTA DE PRECIOS
 # =========================
+class ListaPrecioItemResponse(BaseModel):
+    item_id: int | None = None
+    codigo: str | None = None
+    nombre: str | None = None
+    tipo: str | None = None
+    subtipo: str | None = None
+    unidad: str | None = None
+    costo_unit: float | None = None
+    cantidad: float | None = None
+    total: float | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class ListaPrecioCreate(BaseModel):
     nombre: str
@@ -51,15 +63,4 @@ class ListaPrecioResponse(BaseModel):
     items: list[ListaPrecioItemResponse] = []
 
 
-class ListaPrecioItemResponse(BaseModel):
-    item_id: int | None = None
-    codigo: str | None = None
-    nombre: str | None = None
-    tipo: str | None = None
-    subtipo: str | None = None
-    unidad: str | None = None
-    costo_unit: float | None = None
-    cantidad: float | None = None
-    total: float | None = None
 
-    model_config = ConfigDict(from_attributes=True)
