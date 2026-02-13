@@ -15,12 +15,14 @@ try:
     # Cuando se ejecuta dentro del paquete (Render)
     from backend_costeo.database import engine, SessionLocal
     from backend_costeo.models import (
-        Base,
-        Producto,
-        CostoItem,
-        CostoHistorial,
-        ListaPrecioConfig,
-    )
+    Base,
+    Producto,
+    CostoItem,
+    CostoHistorial,
+    ListaPrecioConfig,
+    ListaPrecioItem,  # 🔥 AGREGAR ESTO
+)
+
 except ModuleNotFoundError:
     # Cuando se ejecuta localmente
     from database import engine, SessionLocal
@@ -30,7 +32,9 @@ except ModuleNotFoundError:
         CostoItem,
         CostoHistorial,
         ListaPrecioConfig,
+        ListaPrecioItem,  # 🔥 AGREGAR AQUÍ TAMBIÉN
     )
+
 
 # --- Ajuste automático de imports según entorno (Render o local) ---
 BASE_DIR = Path(__file__).resolve().parent
