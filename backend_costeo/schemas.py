@@ -44,14 +44,29 @@ class ListaPrecioCreate(BaseModel):
     precio_integrador: float
 
     # si estás recibiendo items
-    items: Optional[list] = []
 
+class ListaPrecioCreate(BaseModel):
+    nombre: str
 
+    producto_codigo: str
+    producto_nombre: str
 
+    eventuales: float
+    garantia: float
+    burden: float
+    gp_cliente: float
+    gp_integrador: float
+
+    costo_directo: float
+    costo_total: float
+    precio_cliente: float
+    precio_integrador: float
+
+    items: list | None = None
 
 class ListaPrecioResponse(ListaPrecioCreate):
     codigo: str
     creada_en: datetime
 
-    class Config:
+class Config:
         from_attributes = True

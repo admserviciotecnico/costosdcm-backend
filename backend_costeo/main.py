@@ -45,6 +45,8 @@ origins = [
     "https://costosdcm.base44.app",
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://localhost:8001",         # para pruebas locales
+    "http://127.0.0.1:8001"
 ]
 
 app.add_middleware(
@@ -54,31 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://costosdcm.base44.app",  # dominio de tu app frontend
-        "http://localhost:8001",         # para pruebas locales
-        "http://127.0.0.1:8001"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-class ListaPrecioCreate(BaseModel):
-    producto_codigo: str
-    producto_nombre: str
-    eventuales: float
-    garantia: float
-    burden: float
-    gp_cliente: float
-    gp_integrador: float
-    costo_directo: float
-    costo_total: float
-    precio_cliente: float
-    precio_integrador: float
-
 
 # --- Endpoint raíz para verificar que el backend está activo ---
 @app.get("/")
