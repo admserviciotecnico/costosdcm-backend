@@ -192,20 +192,37 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
         nuevo_codigo = "DCM001"
 
     nueva = ListaPrecioConfig(
-        codigo=nuevo_codigo,
-        nombre=data.nombre,  # 🔥 ASIGNAR EXPLÍCITAMENTE
-        producto_codigo=data.producto_codigo,
-        producto_nombre=data.producto_nombre,
-        eventuales=data.eventuales,
-        garantia=data.garantia,
-        burden=data.burden,
-        gp_cliente=data.gp_cliente,
-        gp_integrador=data.gp_integrador,
-        costo_directo=data.costo_directo,
-        costo_total=data.costo_total,
-        precio_cliente=data.precio_cliente,
-        precio_integrador=data.precio_integrador,
-    )
+    codigo=nuevo_codigo,
+    nombre=data.nombre,
+    producto_codigo=data.producto_codigo,
+    producto_nombre=data.producto_nombre,
+    eventuales=data.eventuales,
+    garantia=data.garantia,
+    burden=data.burden,
+    gp_cliente=data.gp_cliente,
+    gp_integrador=data.gp_integrador,
+    costo_directo=data.costo_directo,
+    costo_total=data.costo_total,
+    precio_cliente=data.precio_cliente,
+    precio_integrador=data.precio_integrador,
+
+    # 🔥 Guardar items si vienen
+    if data.items:
+        for item in data.items:
+            nuevo_item = ListaPrecioItem(
+                lista_codigo=nuevo_codigo,
+                item_id=item.get("item_id"),
+                codigo=item.get("codigo"),
+                nombre=item.get("nombre"),
+                tipo=item.get("tipo"),
+                subtipo=item.get("subtipo"),
+                unidad=item.get("unidad"),
+                costo_unit=item.get("costo_unit"),
+                cantidad=item.get("cantidad"),
+                total=item.get("total"),
+            )
+            db.add(nuevo_item)
+
 
     db.add(nueva)
     db.commit()

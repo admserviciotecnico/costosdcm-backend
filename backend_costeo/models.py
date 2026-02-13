@@ -64,7 +64,32 @@ class ListaPrecioConfig(Base):
     precio_integrador = Column(Float)
 
     creada_en = Column(DateTime, default=datetime.utcnow)
+   
+    items = relationship(
+    "ListaPrecioItem",
+    back_populates="lista",
+    cascade="all, delete-orphan"
+    )
 
+class ListaPrecioItem(Base):
+    __tablename__ = "listas_precios_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    lista_codigo = Column(String, ForeignKey("listas_precios.codigo"))
+    
+    item_id = Column(Integer)
+    codigo = Column(String)
+    nombre = Column(String)
+    tipo = Column(String)
+    subtipo = Column(String)
+
+    unidad = Column(String)
+    costo_unit = Column(Float)
+    cantidad = Column(Float)
+    total = Column(Float)
+
+    lista = relationship("ListaPrecioConfig", back_populates="items")
 
 class CostoHistorial(Base):
     __tablename__ = "costos_historial"
