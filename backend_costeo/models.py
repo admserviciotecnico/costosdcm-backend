@@ -78,16 +78,10 @@ class ListaPrecioItem(Base):
 
     lista_codigo = Column(String, ForeignKey("listas_precios.codigo"))
     
-    item_id = Column(Integer)
-    codigo = Column(String)
-    nombre = Column(String)
-    tipo = Column(String)
-    subtipo = Column(String)
-
-    unidad = Column(String)
-    costo_unit = Column(Float)
+    item_id = Column(Integer, ForeignKey("costos_items.id"))
     cantidad = Column(Float)
-    total = Column(Float)
+
+    item = relationship("CostoItem")
 
     lista = relationship("ListaPrecioConfig", back_populates="items")
 

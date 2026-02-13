@@ -238,14 +238,34 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
 
 
 
-@app.get("/api/lista-precios/producto/{codigo}")
-def listar_por_producto(codigo: str, db: Session = Depends(get_db)):
-    return (
-        db.query(ListaPrecioConfig)
-        .filter(ListaPrecioConfig.producto_codigo == codigo)
-        .order_by(ListaPrecioConfig.creada_en.desc())
-        .all()
-    )
+@app.get("/api/lista-precios/{codigo}", response_model=ListaPrecioResponse)
+def obtener_lista(codigo: str, db: Session = Depends(get_db)):
+
+    lista = db.query(ListaPrecioConfig).filter(
+        ListaPrecioConfig.codigo == codigo
+    ).first()
+
+    items_response = []
+
+    for item in lista.items:
+        costo_actual = item.item.costo_fabrica  # o el campo correcto
+
+        items_response.append({
+            "codigo": item.item.codigo,
+            "nombre": item.item.nombre,
+            "tipo": item.item.tipo,
+            "subtipo": item.item.subtipo,
+            "unidad": item.item.unidad,
+            "cantidad": item.cantidad,
+            "costo_unit": costo_actual,
+            "total": costo_actual * item.cantidad
+        })
+
+    return {
+        **lista.__dict__,
+        "items": items_response
+    }
+
 
 @app.get("/api/lista-precios", response_model=list[ListaPrecioResponse])
 def listar_listas(db: Session = Depends(get_db)):
