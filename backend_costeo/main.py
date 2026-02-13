@@ -205,6 +205,7 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
     costo_total=data.costo_total,
     precio_cliente=data.precio_cliente,
     precio_integrador=data.precio_integrador,
+    )
 
     # 🔥 Guardar items si vienen
     if data.items:
@@ -342,7 +343,6 @@ def eliminar_producto(
     db.delete(prod)
     db.commit()
     return {"ok": True, "mensaje": "Producto eliminado correctamente"}
-
 
 if __name__ == "__main__":
     import uvicorn
