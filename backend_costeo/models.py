@@ -22,13 +22,16 @@ class Producto(Base):
 class CostoItem(Base):
     __tablename__ = "costos_items"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String, unique=True, nullable=True)
+    nombre = Column(String)
+    tipo = Column(String)
+    subtipo = Column(String)
+    unidad = Column(String)
+    costo_fabrica = Column(Float)
+    costo_fob = Column(Float)
+    coeficiente = Column(Float)
 
-    historial = relationship(
-        "CostoHistorial",
-        back_populates="item",
-        cascade="all, delete-orphan"
-    )
 
 
 
