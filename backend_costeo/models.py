@@ -29,6 +29,12 @@ class CostoItem(Base):
     subtipo = Column(String)
     unidad = Column(String)
     costo = Column(Float)
+    historial = relationship(
+    "CostoHistorial",
+    back_populates="item",
+    cascade="all, delete-orphan"
+)
+
 
 
 
