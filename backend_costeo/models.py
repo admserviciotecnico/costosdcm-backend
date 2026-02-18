@@ -23,17 +23,13 @@ class CostoItem(Base):
     __tablename__ = "costos_items"
 
     id = Column(Integer, primary_key=True)
-    codigo = Column(String)
-    nombre = Column(String)
-    tipo = Column(String)
-    subtipo = Column(String)
-    unidad = Column(String)
-    costo = Column(Float)
+
     historial = relationship(
-    "CostoHistorial",
-    back_populates="item",
-    cascade="all, delete-orphan"
-)
+        "CostoHistorial",
+        back_populates="item",
+        cascade="all, delete-orphan"
+    )
+
 
 
 
@@ -85,12 +81,11 @@ class ListaPrecioItem(Base):
 class CostoHistorial(Base):
     __tablename__ = "costos_historial"
 
-    id = Column(Integer, primary_key=True, index=True)
-    costo_item_id = Column(Integer, ForeignKey("costos_items.id"))
-    fecha = Column(DateTime, default=datetime.utcnow)
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey("costos_items.id"))
 
-    costo_fabrica = Column(Float, nullable=True)
-    costo_fob = Column(Float, nullable=True)
-    coeficiente = Column(Float, nullable=True)
+    item = relationship(
+        "CostoItem",
+        back_populates="historial"
+    )
 
-    costo_item = relationship("CostoItem", back_populates="historial")
