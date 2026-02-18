@@ -58,6 +58,9 @@ def seed_if_empty():
 
                         codigo_item = item.get("codigo")
 
+                        if not codigo_item:
+                            continue  # ⛔ No insertamos si no hay código válido
+
                         existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
 
                         if existente:
@@ -91,7 +94,8 @@ def seed_if_empty():
                         for item in items:
 
                             codigo_item = item.get("codigo")
-
+                            if not codigo_item:
+                                continue  # ⛔ No insertamos si no hay código válido
                             existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
 
                             subtipo_completo = f"{subtipo} - {variante}"
