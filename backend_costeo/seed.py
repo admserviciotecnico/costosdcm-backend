@@ -58,7 +58,7 @@ def seed_if_empty():
                     for item in contenido:
                         nuevo = CostoItem(
                             codigo=item.get("codigo"),
-                            denominacion=item.get("denominacion"),
+                            nombre=item.get("denominacion"),
                             tipo=tipo,
                             subtipo=subtipo,
                             unidad=item.get("unidad"),
@@ -76,7 +76,7 @@ def seed_if_empty():
                         for item in items:
                             nuevo = CostoItem(
                                 codigo=item.get("codigo"),
-                                denominacion=item.get("denominacion"),
+                                nombre=item.get("denominacion"),
                                 tipo=tipo,
                                 subtipo=f"{subtipo} - {variante}",
                                 unidad=item.get("unidad"),
