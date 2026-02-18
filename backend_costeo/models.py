@@ -28,16 +28,17 @@ class CostoItem(Base):
     tipo = Column(String)
     subtipo = Column(String)
     unidad = Column(String)
-    costo_fabrica = Column(Float)
-    costo_fob = Column(Float)
-    coeficiente = Column(Float)
 
+    costo_fabrica = Column(Float, nullable=True)
+    costo_fob = Column(Float, nullable=True)
+    coeficiente = Column(Float, nullable=True)
 
+    historial = relationship(
+        "CostoHistorial",
+        back_populates="costo_item",
+        cascade="all, delete-orphan"
+    )
 
-
-
-
-from sqlalchemy import Column, String, Float, DateTime
 
 class ListaPrecioConfig(Base):
     __tablename__ = "listas_precios"
@@ -84,10 +85,15 @@ class ListaPrecioItem(Base):
 class CostoHistorial(Base):
     __tablename__ = "costos_historial"
 
-    id = Column(Integer, primary_key=True)
-    item_id = Column(Integer, ForeignKey("costos_items.id"))
+    id = Column(Integer, primary_key=True, index=True)
+    costo_item_id = Column(Integer, ForeignKey("costos_items.id"))
+    fecha = Column(DateTime, default=datetime.utcnow)
 
-    item = relationship(
+    costo_fabrica = Column(Float, nullable=True)
+    costo_fob = Column(Float, nullable=True)
+    coeficiente = Column(Float, nullable=True)
+
+    costo_item = relationship(
         "CostoItem",
         back_populates="historial"
     )
