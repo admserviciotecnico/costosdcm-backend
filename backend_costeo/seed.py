@@ -45,46 +45,79 @@ def seed_if_empty():
         # =========================
         # COSTOS (JSON ANIDADO)
         # =========================
-        # Costos
         costos_json = load_json("costos_generales_full.json")
 
         for tipo, subtipos in costos_json.items():
 
             for subtipo, contenido in subtipos.items():
 
-                # Caso normal: ya es lista de items
+                # Caso normal: lista directa de items
                 if isinstance(contenido, list):
 
                     for item in contenido:
-                        nuevo = CostoItem(
-                            codigo=item.get("codigo"),
-                            nombre=item.get("denominacion"),
-                            tipo=tipo,
-                            subtipo=subtipo,
-                            unidad=item.get("unidad"),
-                            coeficiente=item.get("coeficiente"),
-                            costo_fob=item.get("costo_fob"),
-                            costo_fabrica=item.get("costo_fabrica"),
-                        )
-                        db.add(nuevo)
 
-                # Caso especial: hay un tercer nivel
+                        codigo_item = item.get("codigo")
+
+                        existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
+
+                        if existente:
+                            # 🔄 ACTUALIZAR
+                            existente.nombre = item.get("denominacion")
+                            existente.tipo = tipo
+                            existente.subtipo = subtipo
+                            existente.unidad = item.get("unidad")
+                            existente.coeficiente = item.get("coeficiente")
+                            existente.costo_fob = item.get("costo_fob")
+                            existente.costo_fabrica = item.get("costo_fabrica")
+                        else:
+                            # ➕ CREAR
+                            nuevo = CostoItem(
+                                codigo=codigo_item,
+                                nombre=item.get("denominacion"),
+                                tipo=tipo,
+                                subtipo=subtipo,
+                                unidad=item.get("unidad"),
+                                coeficiente=item.get("coeficiente"),
+                                costo_fob=item.get("costo_fabrica"),
+                                costo_fabrica=item.get("costo_fabrica"),
+                            )
+                            db.add(nuevo)
+
+                # Caso con tercer nivel (variante)
                 elif isinstance(contenido, dict):
 
                     for variante, items in contenido.items():
 
                         for item in items:
-                            nuevo = CostoItem(
-                                codigo=item.get("codigo"),
-                                nombre=item.get("denominacion"),
-                                tipo=tipo,
-                                subtipo=f"{subtipo} - {variante}",
-                                unidad=item.get("unidad"),
-                                coeficiente=item.get("coeficiente"),
-                                costo_fob=item.get("costo_fob"),
-                                costo_fabrica=item.get("costo_fabrica"),
-                            )
-                            db.add(nuevo)
+
+                            codigo_item = item.get("codigo")
+
+                            existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
+
+                            subtipo_completo = f"{subtipo} - {variante}"
+
+                            if existente:
+                                # 🔄 ACTUALIZAR
+                                existente.nombre = item.get("denominacion")
+                                existente.tipo = tipo
+                                existente.subtipo = subtipo_completo
+                                existente.unidad = item.get("unidad")
+                                existente.coeficiente = item.get("coeficiente")
+                                existente.costo_fob = item.get("costo_fob")
+                                existente.costo_fabrica = item.get("costo_fabrica")
+                            else:
+                                # ➕ CREAR
+                                nuevo = CostoItem(
+                                    codigo=codigo_item,
+                                    nombre=item.get("denominacion"),
+                                    tipo=tipo,
+                                    subtipo=subtipo_completo,
+                                    unidad=item.get("unidad"),
+                                    coeficiente=item.get("coeficiente"),
+                                    costo_fob=item.get("costo_fob"),
+                                    costo_fabrica=item.get("costo_fabrica"),
+                                )
+                                db.add(nuevo)
 
 
         db.commit()
