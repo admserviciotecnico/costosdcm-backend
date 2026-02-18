@@ -261,9 +261,22 @@ def obtener_lista(codigo: str, db: Session = Depends(get_db)):
     }
 
 
+from sqlalchemy.orm import joinedload
+
 @app.get("/api/lista-precios", response_model=list[ListaPrecioResponse])
 def listar_listas(db: Session = Depends(get_db)):
-    return db.query(ListaPrecioConfig).all()
+
+    listas = (
+        db.query(ListaPrecioConfig)
+        .options(
+            joinedload(ListaPrecioConfig.items)
+            .joinedload(ListaPrecioItem.item)
+        )
+        .all()
+    )
+
+    return listas
+
 
 
 @app.delete("/api/lista-precios/{lista_id}")

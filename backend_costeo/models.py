@@ -22,23 +22,14 @@ class Producto(Base):
 class CostoItem(Base):
     __tablename__ = "costos_items"
 
-    id = Column(Integer, primary_key=True, index=True)
-    tipo = Column(String, index=True)
-    subtipo = Column(String, index=True)
-    item = Column(Integer, nullable=True)
-    codigo = Column(String, nullable=True)
-    denominacion = Column(String)
+    id = Column(Integer, primary_key=True)
+    codigo = Column(String)
+    nombre = Column(String)
+    tipo = Column(String)
+    subtipo = Column(String)
     unidad = Column(String)
+    costo = Column(Float)
 
-    costo_fabrica = Column(Float, nullable=True)
-    costo_fob = Column(Float, nullable=True)
-    coeficiente = Column(Float, nullable=True)
-
-    historial = relationship(
-    "CostoHistorial",
-    back_populates="costo_item",
-    cascade="all, delete-orphan"
-)
 
 
 from sqlalchemy import Column, String, Float, DateTime
@@ -74,16 +65,16 @@ class ListaPrecioConfig(Base):
 class ListaPrecioItem(Base):
     __tablename__ = "listas_precios_items"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
 
     lista_codigo = Column(String, ForeignKey("listas_precios.codigo"))
-    
     item_id = Column(Integer, ForeignKey("costos_items.id"))
+
     cantidad = Column(Float)
 
-    item = relationship("CostoItem")
-
+    item = relationship("CostoItem", lazy="joined")
     lista = relationship("ListaPrecioConfig", back_populates="items")
+
 
 class CostoHistorial(Base):
     __tablename__ = "costos_historial"
