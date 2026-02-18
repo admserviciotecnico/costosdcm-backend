@@ -214,20 +214,14 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
     # 🔥 Guardar items si vienen
     if data.items:
         for item in data.items:
+
             nuevo_item = ListaPrecioItem(
                 lista_codigo=nuevo_codigo,
                 item_id=item.get("item_id"),
-                codigo=item.get("codigo"),
-                nombre=item.get("nombre"),
-                tipo=item.get("tipo"),
-                subtipo=item.get("subtipo"),
-                unidad=item.get("unidad"),
-                costo_unit=item.get("costo_unit"),
                 cantidad=item.get("cantidad"),
-                total=item.get("total"),
             )
-            db.add(nuevo_item)
 
+            db.add(nuevo_item)
 
     db.add(nueva)
     db.commit()
