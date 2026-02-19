@@ -85,6 +85,7 @@ def seed_if_empty():
                                 costo_fabrica=item.get("costo_fabrica"),
                             )
                             db.add(nuevo)
+                            db.flush()
 
                 # Caso con tercer nivel (variante)
                 elif isinstance(contenido, dict):
@@ -122,6 +123,7 @@ def seed_if_empty():
                                     costo_fabrica=item.get("costo_fabrica"),
                                 )
                                 db.add(nuevo)
+                                db.flush()
 
 
         db.commit()
