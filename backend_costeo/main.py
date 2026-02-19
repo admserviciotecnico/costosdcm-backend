@@ -275,7 +275,30 @@ def listar_listas(db: Session = Depends(get_db)):
         .all()
     )
 
-    return listas
+    resultado = []
+    for lista in listas:
+        items_response = []
+        for lp_item in lista.items:
+            costo_item = lp_item.item
+            if costo_item:
+                costo_unit = costo_item.costo_fabrica or 0
+                items_response.append({
+                    "item_id": lp_item.item_id,
+                    "codigo": costo_item.codigo,
+                    "nombre": costo_item.nombre,
+                    "tipo": costo_item.tipo,
+                    "subtipo": costo_item.subtipo,
+                    "unidad": costo_item.unidad,
+                    "costo_unit": costo_unit,
+                    "cantidad": lp_item.cantidad,
+                    "total": costo_unit * (lp_item.cantidad or 0),
+                })
+
+        lista_dict = {col.name: getattr(lista, col.name) for col in lista.__table__.columns}
+        lista_dict["items"] = items_response
+        resultado.append(lista_dict)
+
+    return resultado
 
 
 
