@@ -56,12 +56,13 @@ def seed_if_empty():
 
                     for item in contenido:
 
-                        codigo_item = item.get("codigo")
+                        codigo_item = item.get("codigo") or None
 
-                        if not codigo_item:
-                            continue  # ⛔ No insertamos si no hay código válido
-
-                        existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
+                        # ✅ Si tiene código, verificar duplicado antes de insertar
+                        if codigo_item:
+                            existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
+                        else:
+                            existente = None  # Sin código → siempre insertar
 
                         if existente:
                             # 🔄 ACTUALIZAR
@@ -73,7 +74,7 @@ def seed_if_empty():
                             existente.costo_fob = item.get("costo_fob")
                             existente.costo_fabrica = item.get("costo_fabrica")
                         else:
-                            # ➕ CREAR
+                            # ➕ CREAR (con o sin código)
                             nuevo = CostoItem(
                                 codigo=codigo_item,
                                 nombre=item.get("denominacion"),
@@ -81,7 +82,7 @@ def seed_if_empty():
                                 subtipo=subtipo,
                                 unidad=item.get("unidad"),
                                 coeficiente=item.get("coeficiente"),
-                                costo_fob=item.get("costo_fabrica"),
+                                costo_fob=item.get("costo_fob"),
                                 costo_fabrica=item.get("costo_fabrica"),
                             )
                             db.add(nuevo)
@@ -94,12 +95,14 @@ def seed_if_empty():
 
                         for item in items:
 
-                            codigo_item = item.get("codigo")
-                            if not codigo_item:
-                                continue  # ⛔ No insertamos si no hay código válido
-                            existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
-
+                            codigo_item = item.get("codigo") or None
                             subtipo_completo = f"{subtipo} - {variante}"
+
+                            # ✅ Si tiene código, verificar duplicado antes de insertar
+                            if codigo_item:
+                                existente = db.query(CostoItem).filter_by(codigo=codigo_item).first()
+                            else:
+                                existente = None  # Sin código → siempre insertar
 
                             if existente:
                                 # 🔄 ACTUALIZAR
@@ -111,7 +114,7 @@ def seed_if_empty():
                                 existente.costo_fob = item.get("costo_fob")
                                 existente.costo_fabrica = item.get("costo_fabrica")
                             else:
-                                # ➕ CREAR
+                                # ➕ CREAR (con o sin código)
                                 nuevo = CostoItem(
                                     codigo=codigo_item,
                                     nombre=item.get("denominacion"),
@@ -124,7 +127,6 @@ def seed_if_empty():
                                 )
                                 db.add(nuevo)
                                 db.flush()
-
 
         db.commit()
         print("✅ Seed completado correctamente")

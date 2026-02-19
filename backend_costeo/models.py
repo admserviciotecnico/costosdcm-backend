@@ -23,11 +23,12 @@ class CostoItem(Base):
     __tablename__ = "costos_items"
 
     id = Column(Integer, primary_key=True, index=True)
+
     codigo = Column(String, nullable=True, index=True)
-    nombre = Column(String)
-    tipo = Column(String)
-    subtipo = Column(String)
-    unidad = Column(String)
+    nombre = Column(String, nullable=False)
+    tipo = Column(String, nullable=False)
+    subtipo = Column(String, nullable=False)
+    unidad = Column(String, nullable=True)
 
     costo_fabrica = Column(Float, nullable=True)
     costo_fob = Column(Float, nullable=True)
