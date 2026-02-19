@@ -366,7 +366,6 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
     if not lista:
         raise HTTPException(status_code=404, detail="Lista no encontrada")
 
-    # Actualizar campos de la configuración
     campos_config = {
         "nombre", "producto_codigo", "producto_nombre",
         "eventuales", "garantia", "burden",
@@ -375,17 +374,14 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
         "precio_cliente", "precio_integrador"
     }
     for campo in campos_config:
-        if campo in data:
+        if campo in data and data[campo] is not None:  # ← nunca sobreescribir con None
             setattr(lista, campo, data[campo])
 
-    # Reemplazar ítems si vienen en el payload
     if "items" in data:
-        # Borrar ítems anteriores
         db.query(ListaPrecioItem).filter(
             ListaPrecioItem.lista_codigo == lista_codigo
         ).delete()
 
-        # Insertar los nuevos
         for item in data["items"]:
             db.add(ListaPrecioItem(
                 lista_codigo=lista_codigo,

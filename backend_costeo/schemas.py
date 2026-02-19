@@ -42,23 +42,18 @@ class ListaPrecioCreate(BaseModel):
 class ListaPrecioResponse(BaseModel):
     codigo: str
     nombre: str
-
-    producto_codigo: str
-    producto_nombre: str
-
-    eventuales: float
-    garantia: float
-    burden: float
-    gp_cliente: float
-    gp_integrador: float
-
-    costo_directo: float
-    costo_total: float
-    precio_cliente: float
-    precio_integrador: float
-
+    producto_codigo: Optional[str] = None
+    producto_nombre: Optional[str] = None
+    eventuales: Optional[float] = None
+    garantia: Optional[float] = None
+    burden: Optional[float] = None
+    gp_cliente: Optional[float] = None
+    gp_integrador: Optional[float] = None
+    costo_directo: Optional[float] = None
+    costo_total: Optional[float] = None
+    precio_cliente: Optional[float] = None
+    precio_integrador: Optional[float] = None
     creada_en: datetime
-
     model_config = ConfigDict(from_attributes=True)
     items: list[ListaPrecioItemResponse] = []
 
