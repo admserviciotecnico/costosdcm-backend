@@ -231,33 +231,35 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
 
 
 
-
 @app.get("/api/lista-precios/{codigo}", response_model=ListaPrecioResponse)
 def obtener_lista(codigo: str, db: Session = Depends(get_db)):
-
     lista = db.query(ListaPrecioConfig).filter(
         ListaPrecioConfig.codigo == codigo
     ).first()
 
+    if not lista:
+        raise HTTPException(status_code=404, detail="Lista no encontrada")
+
     items_response = []
-
-    for item in lista.items:
-        costo_actual = item.item.costo_fabrica  # o el campo correcto
-
-        items_response.append({
-            "codigo": item.item.codigo,
-            "nombre": item.item.nombre,
-            "tipo": item.item.tipo,
-            "subtipo": item.item.subtipo,
-            "unidad": item.item.unidad,
-            "cantidad": item.cantidad,
-            "costo_unit": costo_actual,
-            "total": costo_actual * item.cantidad
-        })
+    for lp_item in lista.items:
+        costo_item = lp_item.item
+        if costo_item:
+            costo_unit = costo_item.costo_fabrica or 0
+            items_response.append({
+                "item_id": lp_item.item_id,
+                "codigo": costo_item.codigo,
+                "nombre": costo_item.nombre,
+                "tipo": costo_item.tipo,
+                "subtipo": costo_item.subtipo,
+                "unidad": costo_item.unidad,
+                "cantidad": lp_item.cantidad,
+                "costo_unit": costo_unit,
+                "total": round(costo_unit * (lp_item.cantidad or 0), 4),
+            })
 
     return {
-        **lista.__dict__,
-        "items": items_response
+        **{col.name: getattr(lista, col.name) for col in lista.__table__.columns},
+        "items": items_response,
     }
 
 
