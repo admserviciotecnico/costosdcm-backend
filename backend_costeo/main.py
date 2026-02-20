@@ -10,6 +10,8 @@ from backend_costeo.schemas import (
     ListaPrecioCreate,
     ListaPrecioResponse
 )
+import httpx
+from backend_costeo.auth import get_rol_usuario, solo_admin, admin_o_vendedor
 
 try:
     # Cuando se ejecuta dentro del paquete (Render)
@@ -69,13 +71,6 @@ def root():
 import os
 from pathlib import Path
 
-DB_PATH = "/data/costeo.db"
-
-if os.getenv("RESET_DB") == "true":
-    if Path(DB_PATH).exists():
-        os.remove(DB_PATH)
-        print("🗑 Base de datos eliminada automáticamente")
-
 Base.metadata.create_all(bind=engine)
 
 from backend_costeo.seed import seed_if_empty
@@ -90,19 +85,19 @@ def get_db():
         db.close()
 
 @app.get("/api/productos")
-def listar_productos(db: Session = Depends(get_db)):
+def listar_productos(db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
     return db.query(Producto).all()
 
 
 @app.get("/api/costos")
-def listar_costos(db: Session = Depends(get_db)):
+def listar_costos(db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
     return db.query(CostoItem).all()
 
 
 from datetime import datetime
 
 @app.post("/api/costos")
-def crear_costo_item(item_data: dict, db: Session = Depends(get_db)):
+def crear_costo_item(item_data: dict, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     try:
         # 🧩 Normalizar campos para que coincidan con el modelo
         mapping = {
@@ -140,7 +135,7 @@ def crear_costo_item(item_data: dict, db: Session = Depends(get_db)):
 
 
 @app.delete("/api/costos/{item_id}")
-def eliminar_costo(item_id: int, db: Session = Depends(get_db)):
+def eliminar_costo(item_id: int, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     item = db.query(CostoItem).filter(CostoItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
@@ -151,7 +146,7 @@ def eliminar_costo(item_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/costeos")
-def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db)):
+def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     """
     Alias de compatibilidad:
     Guarda configuraciones de Lista de Precios
@@ -170,7 +165,7 @@ def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db))
 
 
 @app.get("/api/costos/{item_id}/historial")
-def historial_costos(item_id: int, db: Session = Depends(get_db)):
+def historial_costos(item_id: int, db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
     return (
         db.query(CostoHistorial)
         .filter(CostoHistorial.costo_item_id == item_id)
@@ -182,7 +177,7 @@ def historial_costos(item_id: int, db: Session = Depends(get_db)):
 from sqlalchemy import func
 
 @app.post("/api/lista-precios", response_model=ListaPrecioResponse)
-def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
+def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
 
     # 🔹 Obtener último código
     ultima = db.query(ListaPrecioConfig).order_by(
@@ -232,7 +227,7 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/lista-precios/{codigo}", response_model=ListaPrecioResponse)
-def obtener_lista(codigo: str, db: Session = Depends(get_db)):
+def obtener_lista(codigo: str, db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
     lista = db.query(ListaPrecioConfig).filter(
         ListaPrecioConfig.codigo == codigo
     ).first()
@@ -266,7 +261,7 @@ def obtener_lista(codigo: str, db: Session = Depends(get_db)):
 from sqlalchemy.orm import joinedload
 
 @app.get("/api/lista-precios", response_model=list[ListaPrecioResponse])
-def listar_listas(db: Session = Depends(get_db)):
+def listar_listas(db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
 
     listas = (
         db.query(ListaPrecioConfig)
@@ -305,7 +300,7 @@ def listar_listas(db: Session = Depends(get_db)):
 
 
 @app.delete("/api/lista-precios/{lista_id}")
-def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db)):
+def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     lista = db.query(ListaPrecioConfig).filter(ListaPrecioConfig.id == lista_id).first()
 
     if not lista:
@@ -321,7 +316,7 @@ class CostoUpdate(BaseModel):
     coeficiente: Optional[float] = None
 
 @app.put("/api/costos/{item_id}")
-def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_db)):
+def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
 
     item = db.query(CostoItem).filter(CostoItem.id == item_id).first()
 
@@ -357,7 +352,7 @@ def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_d
     return {"ok": True, "mensaje": mensaje, "item": item.id}
 
 @app.put("/api/lista-precios/{lista_codigo}")
-def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db)):
+def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
 
     lista = db.query(ListaPrecioConfig).filter(
         ListaPrecioConfig.codigo == lista_codigo
@@ -394,7 +389,7 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
     return {"ok": True, "mensaje": "Configuración actualizada correctamente"}
 
 @app.post("/api/productos")
-def crear_producto(producto: dict, db: Session = Depends(get_db)):
+def crear_producto(producto: dict, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     nuevo = Producto(**producto)
     db.add(nuevo)
     db.commit()
@@ -407,7 +402,8 @@ def crear_producto(producto: dict, db: Session = Depends(get_db)):
 def actualizar_producto(
     producto_id: int,
     datos: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    usuario: dict = Depends(solo_admin)
 ):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
 
@@ -425,7 +421,8 @@ def actualizar_producto(
 @app.delete("/api/productos/{producto_id}")
 def eliminar_producto(
     producto_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    usuario: dict = Depends(solo_admin)
 ):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
 
@@ -435,6 +432,84 @@ def eliminar_producto(
     db.delete(prod)
     db.commit()
     return {"ok": True, "mensaje": "Producto eliminado correctamente"}
+
+@app.post("/api/auth/registro")
+async def registro(datos: dict):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{os.getenv('SUPABASE_URL')}/auth/v1/signup",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Content-Type": "application/json"
+            },
+            json={
+                "email": datos.get("email"),
+                "password": datos.get("password")
+            }
+        )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=400, detail="Error al registrar usuario")
+    return {"ok": True, "mensaje": "Usuario registrado. Un administrador debe asignarle el rol."}
+
+
+@app.post("/api/auth/login")
+async def login(datos: dict):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{os.getenv('SUPABASE_URL')}/auth/v1/token?grant_type=password",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Content-Type": "application/json"
+            },
+            json={
+                "email": datos.get("email"),
+                "password": datos.get("password")
+            }
+        )
+    if response.status_code != 200:
+        raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
+    data = response.json()
+    return {
+        "access_token": data.get("access_token"),
+        "token_type": "bearer"
+    }
+
+
+@app.get("/api/auth/me")
+async def me(usuario: dict = Depends(get_rol_usuario)):
+    return usuario
+
+
+@app.get("/api/usuarios")
+async def listar_usuarios(usuario: dict = Depends(solo_admin)):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{os.getenv('SUPABASE_URL')}/rest/v1/usuarios?select=*&order=creado_en.desc",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Authorization": f"Bearer {os.getenv('SUPABASE_KEY')}"
+            }
+        )
+    return response.json()
+
+
+@app.put("/api/usuarios/{user_id}/rol")
+async def cambiar_rol(user_id: str, datos: dict, usuario: dict = Depends(solo_admin)):
+    nuevo_rol = datos.get("rol")
+    if nuevo_rol not in ("admin", "vendedor"):
+        raise HTTPException(status_code=400, detail="Rol inválido")
+    async with httpx.AsyncClient() as client:
+        await client.patch(
+            f"{os.getenv('SUPABASE_URL')}/rest/v1/usuarios?id=eq.{user_id}",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Authorization": f"Bearer {os.getenv('SUPABASE_KEY')}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation"
+            },
+            json={"rol": nuevo_rol}
+        )
+    return {"ok": True, "mensaje": f"Rol actualizado a {nuevo_rol}"}
 
 if __name__ == "__main__":
     import uvicorn
