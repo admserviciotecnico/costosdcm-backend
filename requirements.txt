@@ -10,4 +10,4 @@ click==8.3.1
 h11==0.16.0
 idna==3.11
 requests==2.32.5
-
+psycopg2-binary
