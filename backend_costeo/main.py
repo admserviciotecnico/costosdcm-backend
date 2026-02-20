@@ -444,12 +444,16 @@ async def registro(datos: dict):
             },
             json={
                 "email": datos.get("email"),
-                "password": datos.get("password")
+                "password": datos.get("password"),
+                "data": {
+                    "nombre": datos.get("nombre"),
+                    "apellido": datos.get("apellido")
+                }
             }
         )
     if response.status_code not in (200, 201):
         raise HTTPException(status_code=400, detail="Error al registrar usuario")
-    return {"ok": True, "mensaje": "Usuario registrado. Un administrador debe asignarle el rol."}
+    return {"ok": True, "mensaje": "Usuario registrado correctamente."}
 
 
 @app.post("/api/auth/login")
@@ -510,6 +514,22 @@ async def cambiar_rol(user_id: str, datos: dict, usuario: dict = Depends(solo_ad
             json={"rol": nuevo_rol}
         )
     return {"ok": True, "mensaje": f"Rol actualizado a {nuevo_rol}"}
+
+@app.post("/api/auth/cambiar-password")
+async def cambiar_password(datos: dict, usuario: dict = Depends(get_rol_usuario)):
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            f"{os.getenv('SUPABASE_URL')}/auth/v1/user",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Authorization": f"Bearer {datos.get('access_token')}",
+                "Content-Type": "application/json"
+            },
+            json={"password": datos.get("nueva_password")}
+        )
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail="Error al cambiar contraseña")
+    return {"ok": True, "mensaje": "Contraseña actualizada correctamente"}
 
 if __name__ == "__main__":
     import uvicorn
