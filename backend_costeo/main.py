@@ -551,10 +551,13 @@ def actualizar_coeficiente_blue(
 ):
     from sqlalchemy import text
 
-    porcentaje_blue = datos.get("coeficiente_blue")
+    # Aceptar tanto "coeficiente_blue" como "coeficiente"
+    porcentaje_blue = datos.get("coeficiente_blue") if datos.get("coeficiente_blue") is not None else datos.get("coeficiente")
+
     if porcentaje_blue is None or porcentaje_blue < 0:
         raise HTTPException(status_code=400, detail="Valor inválido")
 
+    # resto del código igual...
     # 1️⃣ Guardar el nuevo coeficiente_blue en la tabla parametros
     db.execute(text("""
         UPDATE parametros SET valor = :valor, actualizado_en = NOW()
