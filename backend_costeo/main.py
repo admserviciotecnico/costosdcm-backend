@@ -531,49 +531,70 @@ async def cambiar_password(datos: dict, usuario: dict = Depends(get_rol_usuario)
         raise HTTPException(status_code=400, detail="Error al cambiar contraseña")
     return {"ok": True, "mensaje": "Contraseña actualizada correctamente"}
 
+@app.get("/api/parametros/coeficiente-blue")
+def obtener_coeficiente_blue(
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(admin_o_vendedor)
+):
+    from sqlalchemy import text
+    result = db.execute(
+        text("SELECT valor FROM parametros WHERE clave = 'coeficiente_blue'")
+    ).fetchone()
+    return {"coeficiente_blue": result[0] if result else 0}
+
+
 @app.put("/api/parametros/coeficiente-blue")
 def actualizar_coeficiente_blue(
     datos: dict,
     db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
-    nuevo_coeficiente = datos.get("coeficiente")
-    if not nuevo_coeficiente or nuevo_coeficiente <= 0:
-        raise HTTPException(status_code=400, detail="Coeficiente inválido")
+    from sqlalchemy import text
 
-    # 1️⃣ Actualizar ítems electrónicos importados (coeficiente > 1)
+    porcentaje_blue = datos.get("coeficiente_blue")
+    if porcentaje_blue is None or porcentaje_blue < 0:
+        raise HTTPException(status_code=400, detail="Valor inválido")
+
+    # 1️⃣ Guardar el nuevo coeficiente_blue en la tabla parametros
+    db.execute(text("""
+        UPDATE parametros SET valor = :valor, actualizado_en = NOW()
+        WHERE clave = 'coeficiente_blue'
+    """), {"valor": porcentaje_blue})
+
+    # 2️⃣ Recalcular costo_fabrica de ítems importados
+    # costo_fabrica = costo_fob × coeficiente_original × (1 + coeficiente_blue/100)
     items_afectados = db.query(CostoItem).filter(
         CostoItem.tipo == "Electronica",
         CostoItem.coeficiente > 1
     ).all()
 
     for item in items_afectados:
-        item.coeficiente = nuevo_coeficiente
         if item.costo_fob:
-            item.costo_fabrica = round(item.costo_fob * nuevo_coeficiente, 4)
-        db.add(CostoHistorial(
-            costo_item_id=item.id,
-            costo_fabrica=item.costo_fabrica,
-            costo_fob=item.costo_fob,
-            coeficiente=item.coeficiente,
-        ))
+            nuevo_costo = round(
+                item.costo_fob * item.coeficiente * (1 + porcentaje_blue / 100), 4
+            )
+            # Guardar historial antes de modificar
+            db.add(CostoHistorial(
+                costo_item_id=item.id,
+                costo_fabrica=item.costo_fabrica,
+                costo_fob=item.costo_fob,
+                coeficiente=item.coeficiente,
+            ))
+            item.costo_fabrica = nuevo_costo
 
     db.flush()
 
-    # 2️⃣ Recalcular todas las configuraciones de lista de precios
+    # 3️⃣ Recalcular todas las listas de precios
     listas = db.query(ListaPrecioConfig).options(
         joinedload(ListaPrecioConfig.items).joinedload(ListaPrecioItem.item)
     ).all()
 
     for lista in listas:
-        # Costo directo = suma de (costo_fabrica * cantidad) de cada ítem
         costo_directo = sum(
             (lp_item.item.costo_fabrica or 0) * (lp_item.cantidad or 0)
             for lp_item in lista.items
             if lp_item.item
         )
-
-        # Aplicar parámetros de la configuración
         eventuales = (lista.eventuales or 0) / 100
         garantia = (lista.garantia or 0) / 100
         burden = (lista.burden or 0) / 100
@@ -593,10 +614,16 @@ def actualizar_coeficiente_blue(
 
     return {
         "ok": True,
-        "mensaje": f"Coeficiente blue actualizado a {nuevo_coeficiente}",
+        "mensaje": f"Coeficiente blue actualizado a {porcentaje_blue}%",
         "items_actualizados": len(items_afectados),
         "listas_recalculadas": len(listas)
     }
+
+@app.post("/api/admin/reload-costos")
+def reload_costos(db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
+    from backend_costeo.seed import seed_costos_only
+    seed_costos_only(db)
+    return {"ok": True, "mensaje": "Ítems de costo recargados desde JSON"}
 
 if __name__ == "__main__":
     import uvicorn

@@ -17,6 +17,53 @@ def load_json(filename):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def seed_costos_only(db: Session):
+    try:
+        costos_json = load_json("costos_generales_full.json")
+        count = 0
+
+        for tipo, subtipos in costos_json.items():
+            for subtipo, contenido in subtipos.items():
+
+                if isinstance(contenido, list):
+                    for item in contenido:
+                        nuevo = CostoItem(
+                            codigo=item.get("codigo") or None,
+                            nombre=item.get("denominacion"),
+                            tipo=tipo,
+                            subtipo=subtipo,
+                            unidad=item.get("unidad"),
+                            coeficiente=item.get("coeficiente"),
+                            costo_fob=item.get("costo_fob"),
+                            costo_fabrica=item.get("costo_fabrica"),
+                        )
+                        db.add(nuevo)
+                        count += 1
+
+                elif isinstance(contenido, dict):
+                    for variante, items in contenido.items():
+                        for item in items:
+                            nuevo = CostoItem(
+                                codigo=item.get("codigo") or None,
+                                nombre=item.get("denominacion"),
+                                tipo=tipo,
+                                subtipo=f"{subtipo} - {variante}",
+                                unidad=item.get("unidad"),
+                                coeficiente=item.get("coeficiente"),
+                                costo_fob=item.get("costo_fob"),
+                                costo_fabrica=item.get("costo_fabrica"),
+                            )
+                            db.add(nuevo)
+                            count += 1
+
+        db.commit()
+        print(f"✅ {count} ítems de costo recargados correctamente")
+
+    except Exception as e:
+        db.rollback()
+        print("❌ Error en reload costos:", e)
+        raise
+
 def seed_if_empty():
     db: Session = SessionLocal()
 
