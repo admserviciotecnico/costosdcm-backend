@@ -619,12 +619,6 @@ def actualizar_coeficiente_blue(
         "listas_recalculadas": len(listas)
     }
 
-@app.post("/api/admin/reload-costos")
-def reload_costos(db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
-    from backend_costeo.seed import seed_costos_only
-    seed_costos_only(db)
-    return {"ok": True, "mensaje": "Ítems de costo recargados desde JSON"}
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
