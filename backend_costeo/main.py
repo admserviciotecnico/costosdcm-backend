@@ -531,6 +531,73 @@ async def cambiar_password(datos: dict, usuario: dict = Depends(get_rol_usuario)
         raise HTTPException(status_code=400, detail="Error al cambiar contraseña")
     return {"ok": True, "mensaje": "Contraseña actualizada correctamente"}
 
+@app.put("/api/parametros/coeficiente-blue")
+def actualizar_coeficiente_blue(
+    datos: dict,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(solo_admin)
+):
+    nuevo_coeficiente = datos.get("coeficiente")
+    if not nuevo_coeficiente or nuevo_coeficiente <= 0:
+        raise HTTPException(status_code=400, detail="Coeficiente inválido")
+
+    # 1️⃣ Actualizar ítems electrónicos importados (coeficiente > 1)
+    items_afectados = db.query(CostoItem).filter(
+        CostoItem.tipo == "Electronica",
+        CostoItem.coeficiente > 1
+    ).all()
+
+    for item in items_afectados:
+        item.coeficiente = nuevo_coeficiente
+        if item.costo_fob:
+            item.costo_fabrica = round(item.costo_fob * nuevo_coeficiente, 4)
+        db.add(CostoHistorial(
+            costo_item_id=item.id,
+            costo_fabrica=item.costo_fabrica,
+            costo_fob=item.costo_fob,
+            coeficiente=item.coeficiente,
+        ))
+
+    db.flush()
+
+    # 2️⃣ Recalcular todas las configuraciones de lista de precios
+    listas = db.query(ListaPrecioConfig).options(
+        joinedload(ListaPrecioConfig.items).joinedload(ListaPrecioItem.item)
+    ).all()
+
+    for lista in listas:
+        # Costo directo = suma de (costo_fabrica * cantidad) de cada ítem
+        costo_directo = sum(
+            (lp_item.item.costo_fabrica or 0) * (lp_item.cantidad or 0)
+            for lp_item in lista.items
+            if lp_item.item
+        )
+
+        # Aplicar parámetros de la configuración
+        eventuales = (lista.eventuales or 0) / 100
+        garantia = (lista.garantia or 0) / 100
+        burden = (lista.burden or 0) / 100
+        gp_cliente = (lista.gp_cliente or 0) / 100
+        gp_integrador = (lista.gp_integrador or 0) / 100
+
+        costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+        precio_cliente = costo_total / (1 - gp_cliente) if gp_cliente < 1 else 0
+        precio_integrador = costo_total / (1 - gp_integrador) if gp_integrador < 1 else 0
+
+        lista.costo_directo = round(costo_directo, 4)
+        lista.costo_total = round(costo_total, 4)
+        lista.precio_cliente = round(precio_cliente, 4)
+        lista.precio_integrador = round(precio_integrador, 4)
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "mensaje": f"Coeficiente blue actualizado a {nuevo_coeficiente}",
+        "items_actualizados": len(items_afectados),
+        "listas_recalculadas": len(listas)
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
