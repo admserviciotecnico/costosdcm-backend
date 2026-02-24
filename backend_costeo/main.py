@@ -299,9 +299,15 @@ def listar_listas(db: Session = Depends(get_db), usuario: dict = Depends(admin_o
 
 
 
-@app.delete("/api/lista-precios/{lista_id}")
-def eliminar_lista_precios(lista_id: int, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
-    lista = db.query(ListaPrecioConfig).filter(ListaPrecioConfig.id == lista_id).first()
+@app.delete("/api/lista-precios/{codigo}")
+def eliminar_lista_precios(
+    codigo: str,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(solo_admin)
+):
+    lista = db.query(ListaPrecioConfig).filter(
+        ListaPrecioConfig.codigo == codigo
+    ).first()
 
     if not lista:
         raise HTTPException(status_code=404, detail="Configuración no encontrada")
