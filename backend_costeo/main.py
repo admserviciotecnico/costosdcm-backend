@@ -101,7 +101,7 @@ def crear_costo_item(item_data: dict, db: Session = Depends(get_db), usuario: di
     try:
         # 🧩 Normalizar campos para que coincidan con el modelo
         mapping = {
-            "nombre": "denominacion",
+            "denominacion": "nombre",
             "costoFabrica": "costo_fabrica",
             "costoFOB": "costo_fob",
             "coef": "coeficiente",
