@@ -35,7 +35,9 @@ class ListaPrecioCreate(BaseModel):
     costo_total: float
     precio_cliente: float
     precio_integrador: float
-
+    metodo_precio: Optional[str] = "gp"
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
     items: Optional[List[dict]] = None
 
 
@@ -53,6 +55,9 @@ class ListaPrecioResponse(BaseModel):
     costo_total: Optional[float] = None
     precio_cliente: Optional[float] = None
     precio_integrador: Optional[float] = None
+    metodo_precio: Optional[str] = "gp"
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
     creada_en: datetime
     model_config = ConfigDict(from_attributes=True)
     items: list[ListaPrecioItemResponse] = []

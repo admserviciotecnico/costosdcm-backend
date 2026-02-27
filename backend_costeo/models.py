@@ -62,7 +62,9 @@ class ListaPrecioConfig(Base):
     precio_integrador = Column(Float)
 
     creada_en = Column(DateTime, default=datetime.utcnow)
-   
+    metodo_precio = Column(String, default="gp")  # "gp" o "markup"
+    markup_cliente = Column(Float, nullable=True)
+    markup_integrador = Column(Float, nullable=True)
     items = relationship(
     "ListaPrecioItem",
     back_populates="lista",

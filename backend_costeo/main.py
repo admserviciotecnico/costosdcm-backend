@@ -176,6 +176,17 @@ def historial_costos(item_id: int, db: Session = Depends(get_db), usuario: dict 
 
 from sqlalchemy import func
 
+def calcular_precios(costo_total, metodo, gp_cliente, gp_integrador, markup_cliente=None, markup_integrador=None):
+    if metodo == "markup":
+        precio_cliente = round(costo_total * (1 + (markup_cliente or 0) / 100), 4)
+        precio_integrador = round(costo_total * (1 + (markup_integrador or 0) / 100), 4)
+    else:  # gp por defecto
+        gp_c = (gp_cliente or 0) / 100
+        gp_i = (gp_integrador or 0) / 100
+        precio_cliente = round(costo_total / (1 - gp_c), 4) if gp_c < 1 else 0
+        precio_integrador = round(costo_total / (1 - gp_i), 4) if gp_i < 1 else 0
+    return precio_cliente, precio_integrador
+
 @app.post("/api/lista-precios", response_model=ListaPrecioResponse)
 def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
 
@@ -191,19 +202,22 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario:
         nuevo_codigo = "DCM001"
 
     nueva = ListaPrecioConfig(
-    codigo=nuevo_codigo,
-    nombre=data.nombre,
-    producto_codigo=data.producto_codigo,
-    producto_nombre=data.producto_nombre,
-    eventuales=data.eventuales,
-    garantia=data.garantia,
-    burden=data.burden,
-    gp_cliente=data.gp_cliente,
-    gp_integrador=data.gp_integrador,
-    costo_directo=data.costo_directo,
-    costo_total=data.costo_total,
-    precio_cliente=data.precio_cliente,
-    precio_integrador=data.precio_integrador,
+        codigo=nuevo_codigo,
+        nombre=data.nombre,
+        producto_codigo=data.producto_codigo,
+        producto_nombre=data.producto_nombre,
+        eventuales=data.eventuales,
+        garantia=data.garantia,
+        burden=data.burden,
+        gp_cliente=data.gp_cliente,
+        gp_integrador=data.gp_integrador,
+        metodo_precio=data.metodo_precio or "gp",
+        markup_cliente=data.markup_cliente,
+        markup_integrador=data.markup_integrador,
+        costo_directo=data.costo_directo,
+        costo_total=data.costo_total,
+        precio_cliente=data.precio_cliente,
+        precio_integrador=data.precio_integrador,
     )
 
     # 🔥 Guardar items si vienen
@@ -371,6 +385,7 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
         "nombre", "producto_codigo", "producto_nombre",
         "eventuales", "garantia", "burden",
         "gp_cliente", "gp_integrador",
+        "metodo_precio", "markup_cliente", "markup_integrador",
         "costo_directo", "costo_total",
         "precio_cliente", "precio_integrador"
     }
@@ -607,17 +622,19 @@ def actualizar_coeficiente_blue(
         eventuales = (lista.eventuales or 0) / 100
         garantia = (lista.garantia or 0) / 100
         burden = (lista.burden or 0) / 100
-        gp_cliente = (lista.gp_cliente or 0) / 100
-        gp_integrador = (lista.gp_integrador or 0) / 100
-
         costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
-        precio_cliente = costo_total / (1 - gp_cliente) if gp_cliente < 1 else 0
-        precio_integrador = costo_total / (1 - gp_integrador) if gp_integrador < 1 else 0
-
+        precio_cliente, precio_integrador = calcular_precios(
+            costo_total=costo_total,
+            metodo=lista.metodo_precio or "gp",
+            gp_cliente=lista.gp_cliente,
+            gp_integrador=lista.gp_integrador,
+            markup_cliente=lista.markup_cliente,
+            markup_integrador=lista.markup_integrador
+        )
         lista.costo_directo = round(costo_directo, 4)
         lista.costo_total = round(costo_total, 4)
-        lista.precio_cliente = round(precio_cliente, 4)
-        lista.precio_integrador = round(precio_integrador, 4)
+        lista.precio_cliente = precio_cliente
+        lista.precio_integrador = precio_integrador
 
     db.commit()
 
