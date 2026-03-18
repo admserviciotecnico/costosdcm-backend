@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from backend_costeo.historial import HistorialCambio
 
 try:
     from backend_costeo.database import Base

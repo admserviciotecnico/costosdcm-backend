@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import HTTPException
 from pydantic import BaseModel
 from typing import Optional
+from backend_costeo.historial import HistorialCambio, registrar_cambio
 import sys
 from pathlib import Path
 from sqlalchemy.orm import Session
@@ -14,7 +15,6 @@ import httpx
 from backend_costeo.auth import get_rol_usuario, solo_admin, admin_o_vendedor
 
 try:
-    # Cuando se ejecuta dentro del paquete (Render)
     from backend_costeo.database import engine, SessionLocal
     from backend_costeo.models import (
     Base,
@@ -22,11 +22,10 @@ try:
     CostoItem,
     CostoHistorial,
     ListaPrecioConfig,
-    ListaPrecioItem,  # 🔥 AGREGAR ESTO
+    ListaPrecioItem,
 )
 
 except ModuleNotFoundError:
-    # Cuando se ejecuta localmente
     from database import engine, SessionLocal
     from models import (
         Base,
@@ -34,11 +33,10 @@ except ModuleNotFoundError:
         CostoItem,
         CostoHistorial,
         ListaPrecioConfig,
-        ListaPrecioItem,  # 🔥 AGREGAR AQUÍ TAMBIÉN
+        ListaPrecioItem,
     )
 
 
-# --- Ajuste automático de imports según entorno (Render o local) ---
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
@@ -51,7 +49,7 @@ origins = [
     "https://costosdcm.base44.app",
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:8001",         # para pruebas locales
+    "http://localhost:8001",
     "http://127.0.0.1:8001"
 ]
 
@@ -63,7 +61,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Endpoint raíz para verificar que el backend está activo ---
 @app.get("/")
 def root():
     return {"message": "Backend de Costeo DCM activo ✅"}
@@ -99,7 +96,6 @@ from datetime import datetime
 @app.post("/api/costos")
 def crear_costo_item(item_data: dict, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     try:
-        # 🧩 Normalizar campos para que coincidan con el modelo
         mapping = {
             "denominacion": "nombre",
             "costoFabrica": "costo_fabrica",
@@ -111,18 +107,19 @@ def crear_costo_item(item_data: dict, db: Session = Depends(get_db), usuario: di
         for k, v in item_data.items():
             normalizado[mapping.get(k, k)] = v
 
-        # 🧠 Crear el objeto
         nuevo_item = CostoItem(**normalizado)
         db.add(nuevo_item)
-        db.flush()  # asigna el ID antes de crear historial
+        db.flush()
 
-        # 🕓 Registrar historial inicial
         db.add(CostoHistorial(
             costo_item_id=nuevo_item.id,
             costo_fabrica=nuevo_item.costo_fabrica,
             costo_fob=nuevo_item.costo_fob,
             coeficiente=nuevo_item.coeficiente,
         ))
+
+        # 📋 Registrar en historial de cambios
+        registrar_cambio(db, usuario, "crear", "costo_item", nuevo_item.id, nuevo_item.nombre)
 
         db.commit()
         db.refresh(nuevo_item)
@@ -140,6 +137,9 @@ def eliminar_costo(item_id: int, db: Session = Depends(get_db), usuario: dict = 
     if not item:
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
 
+    # 📋 Registrar en historial de cambios antes de eliminar
+    registrar_cambio(db, usuario, "eliminar", "costo_item", item.id, item.nombre)
+
     db.delete(item)
     db.commit()
     return {"ok": True}
@@ -147,11 +147,6 @@ def eliminar_costo(item_id: int, db: Session = Depends(get_db), usuario: dict = 
 
 @app.post("/api/costeos")
 def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
-    """
-    Alias de compatibilidad:
-    Guarda configuraciones de Lista de Precios
-    usando el endpoint histórico /api/costeos
-    """
     nueva = ListaPrecioConfig(**data.dict())
     db.add(nueva)
     db.commit()
@@ -180,7 +175,7 @@ def calcular_precios(costo_total, metodo, gp_cliente, gp_integrador, markup_clie
     if metodo == "markup":
         precio_cliente = round(costo_total * (1 + (markup_cliente or 0) / 100), 4)
         precio_integrador = round(costo_total * (1 + (markup_integrador or 0) / 100), 4)
-    else:  # gp por defecto
+    else:
         gp_c = (gp_cliente or 0) / 100
         gp_i = (gp_integrador or 0) / 100
         precio_cliente = round(costo_total / (1 - gp_c), 4) if gp_c < 1 else 0
@@ -190,7 +185,6 @@ def calcular_precios(costo_total, metodo, gp_cliente, gp_integrador, markup_clie
 @app.post("/api/lista-precios", response_model=ListaPrecioResponse)
 def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
 
-    # 🔹 Obtener último código
     ultima = db.query(ListaPrecioConfig).order_by(
         ListaPrecioConfig.codigo.desc()
     ).first()
@@ -220,24 +214,24 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario:
         precio_integrador=data.precio_integrador,
     )
 
-    # 🔥 Guardar items si vienen
     if data.items:
         for item in data.items:
-
             nuevo_item = ListaPrecioItem(
                 lista_codigo=nuevo_codigo,
                 item_id=item.get("item_id"),
                 cantidad=item.get("cantidad"),
             )
-
             db.add(nuevo_item)
 
     db.add(nueva)
+
+    # 📋 Registrar en historial de cambios
+    registrar_cambio(db, usuario, "crear", "lista_precio", nuevo_codigo, data.nombre)
+
     db.commit()
     db.refresh(nueva)
 
     return nueva
-
 
 
 @app.get("/api/lista-precios/{codigo}", response_model=ListaPrecioResponse)
@@ -312,7 +306,6 @@ def listar_listas(db: Session = Depends(get_db), usuario: dict = Depends(admin_o
     return resultado
 
 
-
 @app.delete("/api/lista-precios/{codigo}")
 def eliminar_lista_precios(
     codigo: str,
@@ -325,6 +318,9 @@ def eliminar_lista_precios(
 
     if not lista:
         raise HTTPException(status_code=404, detail="Configuración no encontrada")
+
+    # 📋 Registrar en historial de cambios antes de eliminar
+    registrar_cambio(db, usuario, "eliminar", "lista_precio", lista.codigo, lista.nombre)
 
     db.delete(lista)
     db.commit()
@@ -343,7 +339,6 @@ def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_d
     if not item:
         raise HTTPException(status_code=404, detail="Ítem no encontrado")
 
-    # --- 1️⃣ Guardar historial solo si se modifican valores de costo ---
     campos_costo = {"costo_fabrica", "costo_fob", "coeficiente"}
     modificar_historial = any(campo in datos for campo in campos_costo)
 
@@ -356,12 +351,20 @@ def actualizar_costo_item(item_id: int, datos: dict, db: Session = Depends(get_d
         )
         db.add(historial)
 
-    # --- 2️⃣ Actualizar campos del modelo ---
+    # --- Actualizar campos y registrar cambios detallados ---
     for campo, valor in datos.items():
         if hasattr(item, campo):
+            valor_anterior = getattr(item, campo)
             setattr(item, campo, valor)
+            if str(valor_anterior) != str(valor):
+                registrar_cambio(
+                    db, usuario, "editar", "costo_item",
+                    item.id, item.nombre,
+                    campo=campo,
+                    valor_anterior=valor_anterior,
+                    valor_nuevo=valor
+                )
 
-    # --- 3️⃣ Guardar cambios ---
     db.commit()
     db.refresh(item)
 
@@ -390,8 +393,18 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
         "precio_cliente", "precio_integrador"
     }
     for campo in campos_config:
-        if campo in data and data[campo] is not None:  # ← nunca sobreescribir con None
-            setattr(lista, campo, data[campo])
+        if campo in data and data[campo] is not None:
+            valor_anterior = getattr(lista, campo)
+            nuevo_valor = data[campo]
+            setattr(lista, campo, nuevo_valor)
+            if str(valor_anterior) != str(nuevo_valor):
+                registrar_cambio(
+                    db, usuario, "editar", "lista_precio",
+                    lista_codigo, lista.nombre,
+                    campo=campo,
+                    valor_anterior=valor_anterior,
+                    valor_nuevo=nuevo_valor
+                )
 
     if "items" in data:
         db.query(ListaPrecioItem).filter(
@@ -413,17 +426,21 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
 def crear_producto(producto: dict, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
     nuevo = Producto(**producto)
     db.add(nuevo)
+    db.flush()
+
+    # 📋 Registrar en historial de cambios
+    registrar_cambio(db, usuario, "crear", "producto", nuevo.id, nuevo.nombre)
+
     db.commit()
     db.refresh(nuevo)
     return nuevo
-
 
 
 @app.put("/api/productos/{producto_id}")
 def actualizar_producto(
     producto_id: int,
     datos: dict,
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
@@ -431,9 +448,19 @@ def actualizar_producto(
     if not prod:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
+    # --- Actualizar campos y registrar cambios detallados ---
     for campo, valor in datos.items():
         if hasattr(prod, campo):
+            valor_anterior = getattr(prod, campo)
             setattr(prod, campo, valor)
+            if str(valor_anterior) != str(valor):
+                registrar_cambio(
+                    db, usuario, "editar", "producto",
+                    prod.id, prod.nombre,
+                    campo=campo,
+                    valor_anterior=valor_anterior,
+                    valor_nuevo=valor
+                )
 
     db.commit()
     db.refresh(prod)
@@ -442,13 +469,16 @@ def actualizar_producto(
 @app.delete("/api/productos/{producto_id}")
 def eliminar_producto(
     producto_id: int,
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
     prod = db.query(Producto).filter(Producto.id == producto_id).first()
 
     if not prod:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    # 📋 Registrar en historial de cambios antes de eliminar
+    registrar_cambio(db, usuario, "eliminar", "producto", prod.id, prod.nombre)
 
     db.delete(prod)
     db.commit()
@@ -572,21 +602,16 @@ def actualizar_coeficiente_blue(
 ):
     from sqlalchemy import text
 
-    # Aceptar tanto "coeficiente_blue" como "coeficiente"
     porcentaje_blue = datos.get("coeficiente_blue") if datos.get("coeficiente_blue") is not None else datos.get("coeficiente")
 
     if porcentaje_blue is None or porcentaje_blue < 0:
         raise HTTPException(status_code=400, detail="Valor inválido")
 
-    # resto del código igual...
-    # 1️⃣ Guardar el nuevo coeficiente_blue en la tabla parametros
     db.execute(text("""
         UPDATE parametros SET valor = :valor, actualizado_en = NOW()
         WHERE clave = 'coeficiente_blue'
     """), {"valor": porcentaje_blue})
 
-    # 2️⃣ Recalcular costo_fabrica de ítems importados
-    # costo_fabrica = costo_fob × coeficiente_original × (1 + coeficiente_blue/100)
     items_afectados = db.query(CostoItem).filter(
         CostoItem.tipo == "Electronica",
         CostoItem.coeficiente > 1
@@ -597,7 +622,6 @@ def actualizar_coeficiente_blue(
             nuevo_costo = round(
                 item.costo_fob * item.coeficiente * (1 + porcentaje_blue / 100), 4
             )
-            # Guardar historial antes de modificar
             db.add(CostoHistorial(
                 costo_item_id=item.id,
                 costo_fabrica=item.costo_fabrica,
@@ -608,7 +632,6 @@ def actualizar_coeficiente_blue(
 
     db.flush()
 
-    # 3️⃣ Recalcular todas las listas de precios
     listas = db.query(ListaPrecioConfig).options(
         joinedload(ListaPrecioConfig.items).joinedload(ListaPrecioItem.item)
     ).all()
@@ -651,7 +674,32 @@ def reload_costos(db: Session = Depends(get_db), usuario: dict = Depends(solo_ad
     seed_costos_only(db)
     return {"ok": True, "mensaje": "Ítems de costo recargados desde JSON"}
 
+
+# --- Endpoints de historial de cambios ---
+
+@app.get("/api/historial")
+def obtener_historial(
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(solo_admin)
+):
+    return db.query(HistorialCambio).order_by(
+        HistorialCambio.fecha.desc()
+    ).limit(500).all()
+
+
+@app.get("/api/historial/{entidad}/{entidad_id}")
+def obtener_historial_entidad(
+    entidad: str,
+    entidad_id: str,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(admin_o_vendedor)
+):
+    return db.query(HistorialCambio).filter(
+        HistorialCambio.entidad == entidad,
+        HistorialCambio.entidad_id == entidad_id
+    ).order_by(HistorialCambio.fecha.desc()).all()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-
