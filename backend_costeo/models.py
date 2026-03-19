@@ -71,6 +71,7 @@ class ListaPrecioConfig(Base):
     back_populates="lista",
     cascade="all, delete-orphan"
     )
+    observaciones = Column(String, nullable=True)
 
 class ListaPrecioItem(Base):
     __tablename__ = "listas_precios_items"

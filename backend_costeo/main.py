@@ -212,6 +212,7 @@ def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario:
         costo_total=data.costo_total,
         precio_cliente=data.precio_cliente,
         precio_integrador=data.precio_integrador,
+        observaciones=data.observaciones,
     )
 
     if data.items:
@@ -390,7 +391,7 @@ def actualizar_lista(lista_codigo: str, data: dict, db: Session = Depends(get_db
         "gp_cliente", "gp_integrador",
         "metodo_precio", "markup_cliente", "markup_integrador",
         "costo_directo", "costo_total",
-        "precio_cliente", "precio_integrador"
+        "precio_cliente", "precio_integrador", "observaciones"
     }
     for campo in campos_config:
         if campo in data and data[campo] is not None:

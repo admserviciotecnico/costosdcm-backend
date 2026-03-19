@@ -39,6 +39,7 @@ class ListaPrecioCreate(BaseModel):
     markup_cliente: Optional[float] = None
     markup_integrador: Optional[float] = None
     items: Optional[List[dict]] = None
+    observaciones: Optional[str] = None
 
 
 class ListaPrecioResponse(BaseModel):
@@ -61,6 +62,7 @@ class ListaPrecioResponse(BaseModel):
     creada_en: datetime
     model_config = ConfigDict(from_attributes=True)
     items: list[ListaPrecioItemResponse] = []
+    observaciones: Optional[str] = None
 
 
 
