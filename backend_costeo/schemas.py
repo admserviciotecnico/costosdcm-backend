@@ -1,11 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
-
-
+ 
+ 
 # =========================
 # LISTA DE PRECIOS
 # =========================
+ 
 class ListaPrecioItemResponse(BaseModel):
     item_id: int | None = None
     codigo: str | None = None
@@ -16,21 +17,18 @@ class ListaPrecioItemResponse(BaseModel):
     costo_unit: float | None = None
     cantidad: float | None = None
     total: float | None = None
-
     model_config = ConfigDict(from_attributes=True)
-
+ 
+ 
 class ListaPrecioCreate(BaseModel):
     nombre: str
-
     producto_codigo: str
     producto_nombre: str
-
     eventuales: float
     garantia: float
     burden: float
     gp_cliente: float
     gp_integrador: float
-
     costo_directo: float
     costo_total: float
     precio_cliente: float
@@ -40,8 +38,8 @@ class ListaPrecioCreate(BaseModel):
     markup_integrador: Optional[float] = None
     items: Optional[List[dict]] = None
     observaciones: Optional[str] = None
-
-
+ 
+ 
 class ListaPrecioResponse(BaseModel):
     codigo: str
     nombre: str
@@ -60,9 +58,128 @@ class ListaPrecioResponse(BaseModel):
     markup_cliente: Optional[float] = None
     markup_integrador: Optional[float] = None
     creada_en: datetime
-    model_config = ConfigDict(from_attributes=True)
-    items: list[ListaPrecioItemResponse] = []
     observaciones: Optional[str] = None
-
-
-
+    items: list[ListaPrecioItemResponse] = []
+    model_config = ConfigDict(from_attributes=True)
+ 
+ 
+# =========================
+# CATÁLOGO DE PRODUCTOS
+# =========================
+ 
+class CatalogoConjuntoItem(BaseModel):
+    lista_codigo: str
+    cantidad: float = 1
+ 
+ 
+class CatalogoConjuntoResponse(BaseModel):
+    id: int
+    lista_codigo: str
+    cantidad: float
+    nombre_conjunto: Optional[str] = None
+    precio_cliente_conjunto: Optional[float] = None
+    precio_integrador_conjunto: Optional[float] = None
+    costo_directo_conjunto: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
+ 
+ 
+class CatalogoProductoCreate(BaseModel):
+    nombre: str
+    producto_codigo: Optional[str] = None
+    producto_nombre: Optional[str] = None
+    metodo_precio: Optional[str] = "gp"
+    gp_cliente: Optional[float] = 0
+    gp_integrador: Optional[float] = 0
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
+    eventuales: Optional[float] = 0
+    garantia: Optional[float] = 0
+    burden: Optional[float] = 0
+    observaciones: Optional[str] = None
+    conjuntos: Optional[List[CatalogoConjuntoItem]] = None
+ 
+ 
+class CatalogoProductoResponse(BaseModel):
+    id: int
+    codigo: Optional[str] = None
+    nombre: str
+    producto_codigo: Optional[str] = None
+    producto_nombre: Optional[str] = None
+    metodo_precio: Optional[str] = "gp"
+    gp_cliente: Optional[float] = None
+    gp_integrador: Optional[float] = None
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
+    eventuales: Optional[float] = None
+    garantia: Optional[float] = None
+    burden: Optional[float] = None
+    costo_directo: Optional[float] = None
+    costo_total: Optional[float] = None
+    precio_cliente: Optional[float] = None
+    precio_integrador: Optional[float] = None
+    observaciones: Optional[str] = None
+    creada_en: datetime
+    conjuntos: List[CatalogoConjuntoResponse] = []
+    model_config = ConfigDict(from_attributes=True)
+ 
+ 
+# =========================
+# COTIZACIONES POR PROYECTO
+# =========================
+ 
+class CotizacionConjuntoItem(BaseModel):
+    lista_codigo: str
+    cantidad: float = 1
+ 
+ 
+class CotizacionConjuntoResponse(BaseModel):
+    id: int
+    lista_codigo: str
+    cantidad: float
+    nombre_conjunto: Optional[str] = None
+    precio_cliente_conjunto: Optional[float] = None
+    precio_integrador_conjunto: Optional[float] = None
+    costo_directo_conjunto: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
+ 
+ 
+class CotizacionCreate(BaseModel):
+    nombre: str
+    cliente: str
+    producto_codigo: Optional[str] = None
+    producto_nombre: Optional[str] = None
+    metodo_precio: Optional[str] = "gp"
+    gp_cliente: Optional[float] = 0
+    gp_integrador: Optional[float] = 0
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
+    eventuales: Optional[float] = 0
+    garantia: Optional[float] = 0
+    burden: Optional[float] = 0
+    observaciones: Optional[str] = None
+    conjuntos: Optional[List[CotizacionConjuntoItem]] = None
+ 
+ 
+class CotizacionResponse(BaseModel):
+    id: int
+    codigo: Optional[str] = None
+    nombre: str
+    cliente: str
+    producto_codigo: Optional[str] = None
+    producto_nombre: Optional[str] = None
+    metodo_precio: Optional[str] = "gp"
+    gp_cliente: Optional[float] = None
+    gp_integrador: Optional[float] = None
+    markup_cliente: Optional[float] = None
+    markup_integrador: Optional[float] = None
+    eventuales: Optional[float] = None
+    garantia: Optional[float] = None
+    burden: Optional[float] = None
+    costo_directo: Optional[float] = None
+    costo_total: Optional[float] = None
+    precio_cliente: Optional[float] = None
+    precio_integrador: Optional[float] = None
+    observaciones: Optional[str] = None
+    creada_en: datetime
+    conjuntos: List[CotizacionConjuntoResponse] = []
+    model_config = ConfigDict(from_attributes=True)
