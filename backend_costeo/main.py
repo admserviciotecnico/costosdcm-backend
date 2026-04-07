@@ -771,6 +771,7 @@ def crear_catalogo(
     ultimo = db.query(CatalogoProducto).order_by(CatalogoProducto.id.desc()).first()
     nuevo_codigo = f"CAT{(ultimo.id + 1):03d}" if ultimo else "CAT001"
  
+    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     costo_directo = 0.0
     conjuntos_data = []
     if data.conjuntos:
@@ -779,7 +780,7 @@ def crear_catalogo(
                 ListaPrecioConfig.codigo == c.lista_codigo
             ).first()
             if lista:
-                costo_directo += (lista.precio_cliente or 0) * c.cantidad
+                costo_directo += (lista.costo_directo or 0) * c.cantidad
                 conjuntos_data.append((c.lista_codigo, c.cantidad))
  
     eventuales = (data.eventuales or 0) / 100
@@ -853,6 +854,7 @@ def actualizar_catalogo(
         if campo in data and data[campo] is not None:
             setattr(prod, campo, data[campo])
  
+    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     if "conjuntos" in data:
         db.query(CatalogoConjunto).filter(
             CatalogoConjunto.catalogo_id == catalogo_id
@@ -864,7 +866,7 @@ def actualizar_catalogo(
                 ListaPrecioConfig.codigo == c.get("lista_codigo")
             ).first()
             if lista:
-                costo_directo += (lista.precio_cliente or 0) * c.get("cantidad", 1)
+                costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
             db.add(CatalogoConjunto(
                 catalogo_id=catalogo_id,
                 lista_codigo=c.get("lista_codigo"),
@@ -959,6 +961,7 @@ def crear_cotizacion(
     ultimo = db.query(Cotizacion).order_by(Cotizacion.id.desc()).first()
     nuevo_codigo = f"COT{(ultimo.id + 1):03d}" if ultimo else "COT001"
  
+    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     costo_directo = 0.0
     conjuntos_data = []
     if data.conjuntos:
@@ -967,7 +970,7 @@ def crear_cotizacion(
                 ListaPrecioConfig.codigo == c.lista_codigo
             ).first()
             if lista:
-                costo_directo += (lista.precio_cliente or 0) * c.cantidad
+                costo_directo += (lista.costo_directo or 0) * c.cantidad
                 conjuntos_data.append((c.lista_codigo, c.cantidad))
  
     eventuales = (data.eventuales or 0) / 100
@@ -1042,6 +1045,7 @@ def actualizar_cotizacion(
         if campo in data and data[campo] is not None:
             setattr(cot, campo, data[campo])
  
+    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     if "conjuntos" in data:
         db.query(CotizacionConjunto).filter(
             CotizacionConjunto.cotizacion_id == cotizacion_id
@@ -1053,7 +1057,7 @@ def actualizar_cotizacion(
                 ListaPrecioConfig.codigo == c.get("lista_codigo")
             ).first()
             if lista:
-                costo_directo += (lista.precio_cliente or 0) * c.get("cantidad", 1)
+                costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
             db.add(CotizacionConjunto(
                 cotizacion_id=cotizacion_id,
                 lista_codigo=c.get("lista_codigo"),
@@ -1099,7 +1103,100 @@ def eliminar_cotizacion(
     return {"ok": True}
  
  
+# =========================
+# BLOQUEOS DE EDICIÓN
+# =========================
+ 
+@app.post("/api/locks/{entidad}/{entidad_id}")
+def adquirir_lock(
+    entidad: str,
+    entidad_id: str,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(admin_o_vendedor)
+):
+    from sqlalchemy import text
+    from datetime import timedelta
+ 
+    # Verificar si existe un lock activo (menos de 30 minutos)
+    result = db.execute(text("""
+        SELECT usuario_email, usuario_nombre, adquirido_en
+        FROM edicion_locks
+        WHERE entidad = :entidad AND entidad_id = :entidad_id
+        AND adquirido_en > NOW() - INTERVAL '30 minutes'
+    """), {"entidad": entidad, "entidad_id": entidad_id}).fetchone()
+ 
+    if result and result[0] != usuario.get("email"):
+        raise HTTPException(
+            status_code=423,
+            detail=f"Este elemento está siendo editado por {result[1] or result[0]}"
+        )
+ 
+    # Insertar o actualizar el lock
+    db.execute(text("""
+        INSERT INTO edicion_locks (entidad, entidad_id, usuario_email, usuario_nombre, adquirido_en)
+        VALUES (:entidad, :entidad_id, :email, :nombre, NOW())
+        ON CONFLICT (entidad, entidad_id)
+        DO UPDATE SET usuario_email = :email, usuario_nombre = :nombre, adquirido_en = NOW()
+    """), {
+        "entidad": entidad,
+        "entidad_id": entidad_id,
+        "email": usuario.get("email"),
+        "nombre": f"{usuario.get('nombre', '')} {usuario.get('apellido', '')}".strip()
+    })
+    db.commit()
+    return {"ok": True, "mensaje": "Lock adquirido"}
+ 
+ 
+@app.delete("/api/locks/{entidad}/{entidad_id}")
+def liberar_lock(
+    entidad: str,
+    entidad_id: str,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(admin_o_vendedor)
+):
+    from sqlalchemy import text
+    db.execute(text("""
+        DELETE FROM edicion_locks
+        WHERE entidad = :entidad AND entidad_id = :entidad_id
+        AND usuario_email = :email
+    """), {
+        "entidad": entidad,
+        "entidad_id": entidad_id,
+        "email": usuario.get("email")
+    })
+    db.commit()
+    return {"ok": True, "mensaje": "Lock liberado"}
+ 
+ 
+@app.get("/api/locks/{entidad}/{entidad_id}")
+def verificar_lock(
+    entidad: str,
+    entidad_id: str,
+    db: Session = Depends(get_db),
+    usuario: dict = Depends(admin_o_vendedor)
+):
+    from sqlalchemy import text
+    result = db.execute(text("""
+        SELECT usuario_email, usuario_nombre, adquirido_en
+        FROM edicion_locks
+        WHERE entidad = :entidad AND entidad_id = :entidad_id
+        AND adquirido_en > NOW() - INTERVAL '30 minutes'
+    """), {"entidad": entidad, "entidad_id": entidad_id}).fetchone()
+ 
+    if not result:
+        return {"bloqueado": False}
+ 
+    es_propio = result[0] == usuario.get("email")
+    return {
+        "bloqueado": not es_propio,
+        "usuario_email": result[0],
+        "usuario_nombre": result[1],
+        "adquirido_en": result[2],
+        "es_propio": es_propio
+    }
+ 
+ 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
- 
+    
