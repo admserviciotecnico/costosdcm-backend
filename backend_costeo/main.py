@@ -898,19 +898,27 @@ def actualizar_catalogo(
  
 @app.delete("/api/catalogo/{catalogo_id}")
 def eliminar_catalogo(
-    catalogo_id: int,
+    catalogo_id: str,  # ← cambiar int por str
     db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
-    prod = db.query(CatalogoProducto).filter(CatalogoProducto.id == catalogo_id).first()
+    # Buscar por id numérico o por código
+    try:
+        prod = db.query(CatalogoProducto).filter(
+            CatalogoProducto.id == int(catalogo_id)
+        ).first()
+    except ValueError:
+        prod = db.query(CatalogoProducto).filter(
+            CatalogoProducto.codigo == catalogo_id
+        ).first()
+
     if not prod:
         raise HTTPException(status_code=404, detail="Producto de catálogo no encontrado")
- 
+
     registrar_cambio(db, usuario, "eliminar", "catalogo", prod.id, prod.nombre)
     db.delete(prod)
     db.commit()
     return {"ok": True}
- 
  
 # =========================
 # COTIZACIONES POR PROYECTO
@@ -1089,19 +1097,27 @@ def actualizar_cotizacion(
  
 @app.delete("/api/cotizaciones/{cotizacion_id}")
 def eliminar_cotizacion(
-    cotizacion_id: int,
+    cotizacion_id: str,  # ← cambiar int por str
     db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
-    cot = db.query(Cotizacion).filter(Cotizacion.id == cotizacion_id).first()
+    # Buscar por id numérico o por código
+    try:
+        cot = db.query(Cotizacion).filter(
+            Cotizacion.id == int(cotizacion_id)
+        ).first()
+    except ValueError:
+        cot = db.query(Cotizacion).filter(
+            Cotizacion.codigo == cotizacion_id
+        ).first()
+
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
- 
+
     registrar_cambio(db, usuario, "eliminar", "cotizacion", cot.id, cot.nombre)
     db.delete(cot)
     db.commit()
     return {"ok": True}
- 
  
 # =========================
 # BLOQUEOS DE EDICIÓN
