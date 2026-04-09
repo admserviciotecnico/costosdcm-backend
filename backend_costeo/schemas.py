@@ -97,6 +97,7 @@ class CatalogoProductoCreate(BaseModel):
     burden: Optional[float] = 0
     observaciones: Optional[str] = None
     conjuntos: Optional[List[CatalogoConjuntoItem]] = None
+    precio_final: Optional[float] = None
  
  
 class CatalogoProductoResponse(BaseModel):
@@ -121,6 +122,7 @@ class CatalogoProductoResponse(BaseModel):
     creada_en: datetime
     conjuntos: List[CatalogoConjuntoResponse] = []
     model_config = ConfigDict(from_attributes=True)
+    precio_final: Optional[float] = None
  
  
 # =========================
@@ -158,6 +160,7 @@ class CotizacionCreate(BaseModel):
     burden: Optional[float] = 0
     observaciones: Optional[str] = None
     conjuntos: Optional[List[CotizacionConjuntoItem]] = None
+    precio_final: Optional[float] = None
  
  
 class CotizacionResponse(BaseModel):
@@ -183,3 +186,4 @@ class CotizacionResponse(BaseModel):
     creada_en: datetime
     conjuntos: List[CotizacionConjuntoResponse] = []
     model_config = ConfigDict(from_attributes=True)
+    precio_final: Optional[float] = None
