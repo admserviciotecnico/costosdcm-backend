@@ -112,6 +112,7 @@ class CatalogoProducto(Base):
     precio_integrador = Column(Float, nullable=True)
     observaciones = Column(String, nullable=True)
     creada_en = Column(DateTime, default=datetime.utcnow)
+    precio_final = Column(Float, nullable=True)
     conjuntos = relationship(
         "CatalogoConjunto",
         back_populates="catalogo",
@@ -155,6 +156,7 @@ class Cotizacion(Base):
     precio_integrador = Column(Float, nullable=True)
     observaciones = Column(String, nullable=True)
     creada_en = Column(DateTime, default=datetime.utcnow)
+    precio_final = Column(Float, nullable=True)
     conjuntos = relationship(
         "CotizacionConjunto",
         back_populates="cotizacion",
