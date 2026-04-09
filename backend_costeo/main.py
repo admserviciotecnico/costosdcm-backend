@@ -814,6 +814,7 @@ def crear_catalogo(
         precio_cliente=precio_cliente,
         precio_integrador=precio_integrador,
         observaciones=data.observaciones,
+        precio_final=data.precio_final,
     )
     db.add(nuevo)
     db.flush()
@@ -848,7 +849,7 @@ def actualizar_catalogo(
     campos = {
         "nombre", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones"
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
@@ -1013,6 +1014,7 @@ def crear_cotizacion(
         precio_cliente=precio_cliente,
         precio_integrador=precio_integrador,
         observaciones=data.observaciones,
+        precio_final=data.precio_final,
     )
     db.add(nueva)
     db.flush()
@@ -1047,7 +1049,7 @@ def actualizar_cotizacion(
     campos = {
         "nombre", "cliente", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones"
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
@@ -1215,4 +1217,3 @@ def verificar_lock(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-    
