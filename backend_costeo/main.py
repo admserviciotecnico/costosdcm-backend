@@ -837,30 +837,37 @@ def crear_catalogo(
  
 @app.put("/api/catalogo/{catalogo_id}")
 def actualizar_catalogo(
-    catalogo_id: int,
+    catalogo_id: str,  # ← str, no int
     data: dict,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
-    prod = db.query(CatalogoProducto).filter(CatalogoProducto.id == catalogo_id).first()
+    try:
+        prod = db.query(CatalogoProducto).filter(
+            CatalogoProducto.id == int(catalogo_id)
+        ).first()
+    except ValueError:
+        prod = db.query(CatalogoProducto).filter(
+            CatalogoProducto.codigo == catalogo_id
+        ).first()
+
     if not prod:
         raise HTTPException(status_code=404, detail="Producto de catálogo no encontrado")
- 
+
     campos = {
         "nombre", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones", "precio_final"
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"  # ← agregado
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
             setattr(prod, campo, data[campo])
- 
-    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
+
     if "conjuntos" in data:
         db.query(CatalogoConjunto).filter(
-            CatalogoConjunto.catalogo_id == catalogo_id
+            CatalogoConjunto.catalogo_id == prod.id
         ).delete()
- 
+
         costo_directo = 0.0
         for c in data["conjuntos"]:
             lista = db.query(ListaPrecioConfig).filter(
@@ -869,11 +876,11 @@ def actualizar_catalogo(
             if lista:
                 costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
             db.add(CatalogoConjunto(
-                catalogo_id=catalogo_id,
+                catalogo_id=prod.id,
                 lista_codigo=c.get("lista_codigo"),
                 cantidad=c.get("cantidad", 1),
             ))
- 
+
         eventuales = (prod.eventuales or 0) / 100
         garantia = (prod.garantia or 0) / 100
         burden = (prod.burden or 0) / 100
@@ -890,12 +897,11 @@ def actualizar_catalogo(
         prod.costo_total = round(costo_total, 4)
         prod.precio_cliente = precio_cliente
         prod.precio_integrador = precio_integrador
- 
+
     registrar_cambio(db, usuario, "editar", "catalogo", prod.id, prod.nombre)
     db.commit()
     db.refresh(prod)
     return {"ok": True, "mensaje": "Producto de catálogo actualizado correctamente"}
- 
  
 @app.delete("/api/catalogo/{catalogo_id}")
 def eliminar_catalogo(
@@ -1034,33 +1040,40 @@ def crear_cotizacion(
     cot_dict["conjuntos"] = construir_conjuntos_response(nueva.conjuntos)
     return cot_dict
  
- 
-@app.put("/api/cotizaciones/{cotizacion_id}")
+
+@app.put("/api/cotizacion/{cotizacion_id}")
 def actualizar_cotizacion(
-    cotizacion_id: int,
+    cotizacion_id: str,  # ← str, no int
     data: dict,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
-    cot = db.query(Cotizacion).filter(Cotizacion.id == cotizacion_id).first()
-    if not cot:
+    try:
+        prod = db.query(CotizacionProducto).filter(
+            CotizacionProducto.id == int(cotizacion_id)
+        ).first()
+    except ValueError:
+        prod = db.query(CotizacionProducto).filter(
+            CotizacionProducto.codigo == cotizacion_id
+        ).first()
+
+    if not prod:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
- 
+
     campos = {
-        "nombre", "cliente", "producto_codigo", "producto_nombre", "metodo_precio",
+        "nombre", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones", "precio_final"
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"  # ← agregado
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
-            setattr(cot, campo, data[campo])
- 
-    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
+            setattr(prod, campo, data[campo])
+
     if "conjuntos" in data:
         db.query(CotizacionConjunto).filter(
-            CotizacionConjunto.cotizacion_id == cotizacion_id
+            CotizacionConjunto.cotizacion_id == prod.id
         ).delete()
- 
+
         costo_directo = 0.0
         for c in data["conjuntos"]:
             lista = db.query(ListaPrecioConfig).filter(
@@ -1069,11 +1082,11 @@ def actualizar_cotizacion(
             if lista:
                 costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
             db.add(CotizacionConjunto(
-                cotizacion_id=cotizacion_id,
+                cotizacion_id=prod.id,
                 lista_codigo=c.get("lista_codigo"),
                 cantidad=c.get("cantidad", 1),
             ))
- 
+
         eventuales = (cot.eventuales or 0) / 100
         garantia = (cot.garantia or 0) / 100
         burden = (cot.burden or 0) / 100
@@ -1090,7 +1103,7 @@ def actualizar_cotizacion(
         cot.costo_total = round(costo_total, 4)
         cot.precio_cliente = precio_cliente
         cot.precio_integrador = precio_integrador
- 
+
     registrar_cambio(db, usuario, "editar", "cotizacion", cot.id, cot.nombre)
     db.commit()
     db.refresh(cot)
