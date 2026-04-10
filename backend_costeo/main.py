@@ -746,7 +746,7 @@ def listar_catalogo(
  
 @app.get("/api/catalogo/{catalogo_id}", response_model=CatalogoProductoResponse)
 def obtener_catalogo(
-    catalogo_id: int,
+    catalogo_id: str,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
@@ -951,7 +951,7 @@ def listar_cotizaciones(
  
 @app.get("/api/cotizaciones/{cotizacion_id}", response_model=CotizacionResponse)
 def obtener_cotizacion(
-    cotizacion_id: int,
+    cotizacion_id: str,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
