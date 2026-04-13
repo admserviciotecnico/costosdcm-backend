@@ -750,13 +750,18 @@ def obtener_catalogo(
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
-    prod = db.query(CatalogoProducto).options(
-        joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
-    ).filter(CatalogoProducto.id == catalogo_id).first()
- 
+    try:
+        prod = db.query(CatalogoProducto).options(
+            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
+        ).filter(CatalogoProducto.id == int(catalogo_id)).first()
+    except ValueError:
+        prod = db.query(CatalogoProducto).options(
+            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
+        ).filter(CatalogoProducto.codigo == catalogo_id).first()
+
     if not prod:
         raise HTTPException(status_code=404, detail="Producto de catálogo no encontrado")
- 
+
     prod_dict = {col.name: getattr(prod, col.name) for col in prod.__table__.columns}
     prod_dict["conjuntos"] = construir_conjuntos_response(prod.conjuntos)
     return prod_dict
@@ -955,13 +960,18 @@ def obtener_cotizacion(
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
-    cot = db.query(Cotizacion).options(
-        joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
-    ).filter(Cotizacion.id == cotizacion_id).first()
- 
+    try:
+        cot = db.query(Cotizacion).options(
+            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
+        ).filter(Cotizacion.id == int(cotizacion_id)).first()
+    except ValueError:
+        cot = db.query(Cotizacion).options(
+            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
+        ).filter(Cotizacion.codigo == cotizacion_id).first()
+
     if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
- 
+
     cot_dict = {col.name: getattr(cot, col.name) for col in cot.__table__.columns}
     cot_dict["conjuntos"] = construir_conjuntos_response(cot.conjuntos)
     return cot_dict
@@ -1041,37 +1051,38 @@ def crear_cotizacion(
     return cot_dict
  
 
-@app.put("/api/cotizacion/{cotizacion_id}")
+@app.put("/api/cotizaciones/{cotizacion_id}")
 def actualizar_cotizacion(
-    cotizacion_id: str,  # ← str, no int
+    cotizacion_id: str,
     data: dict,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
 ):
     try:
-        prod = db.query(CotizacionProducto).filter(
-            CotizacionProducto.id == int(cotizacion_id)
+        cot = db.query(Cotizacion).filter(
+            Cotizacion.id == int(cotizacion_id)
         ).first()
     except ValueError:
-        prod = db.query(CotizacionProducto).filter(
-            CotizacionProducto.codigo == cotizacion_id
+        cot = db.query(Cotizacion).filter(
+            Cotizacion.codigo == cotizacion_id
         ).first()
 
-    if not prod:
+    if not cot:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
 
     campos = {
-        "nombre", "producto_codigo", "producto_nombre", "metodo_precio",
+        "nombre", "cliente", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones", "precio_final"  # ← agregado
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
-            setattr(prod, campo, data[campo])
+            setattr(cot, campo, data[campo])
 
+    # ✅ Mismo fix que catálogo — usar costo_directo sin margen
     if "conjuntos" in data:
         db.query(CotizacionConjunto).filter(
-            CotizacionConjunto.cotizacion_id == prod.id
+            CotizacionConjunto.cotizacion_id == cot.id
         ).delete()
 
         costo_directo = 0.0
@@ -1082,7 +1093,7 @@ def actualizar_cotizacion(
             if lista:
                 costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
             db.add(CotizacionConjunto(
-                cotizacion_id=prod.id,
+                cotizacion_id=cot.id,
                 lista_codigo=c.get("lista_codigo"),
                 cantidad=c.get("cantidad", 1),
             ))
