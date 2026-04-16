@@ -667,7 +667,7 @@ def actualizar_coeficiente_blue(
         eventuales = (lista.eventuales or 0) / 100
         garantia = (lista.garantia or 0) / 100
         burden = (lista.burden or 0) / 100
-        costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+        costo_total = costo_directo * (1 + eventuales + garantia + burden)
         precio_cliente, precio_integrador = calcular_precios(
             costo_total=costo_total,
             metodo=lista.metodo_precio or "gp",
@@ -791,7 +791,7 @@ def crear_catalogo(
     eventuales = (data.eventuales or 0) / 100
     garantia = (data.garantia or 0) / 100
     burden = (data.burden or 0) / 100
-    costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+    costo_total = costo_directo * (1 + eventuales + garantia + burden)
     precio_cliente, precio_integrador = calcular_precios(
         costo_total=costo_total,
         metodo=data.metodo_precio or "gp",
@@ -889,7 +889,7 @@ def actualizar_catalogo(
         eventuales = (prod.eventuales or 0) / 100
         garantia = (prod.garantia or 0) / 100
         burden = (prod.burden or 0) / 100
-        costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+        costo_total = costo_directo * (1 + eventuales + garantia + burden)
         precio_cliente, precio_integrador = calcular_precios(
             costo_total=costo_total,
             metodo=prod.metodo_precio or "gp",
@@ -1001,7 +1001,7 @@ def crear_cotizacion(
     eventuales = (data.eventuales or 0) / 100
     garantia = (data.garantia or 0) / 100
     burden = (data.burden or 0) / 100
-    costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+    costo_total = costo_directo * (1 + eventuales + garantia + burden)
     precio_cliente, precio_integrador = calcular_precios(
         costo_total=costo_total,
         metodo=data.metodo_precio or "gp",
@@ -1101,7 +1101,7 @@ def actualizar_cotizacion(
         eventuales = (cot.eventuales or 0) / 100
         garantia = (cot.garantia or 0) / 100
         burden = (cot.burden or 0) / 100
-        costo_total = costo_directo * (1 + eventuales) * (1 + garantia) * (1 + burden)
+        costo_total = costo_directo * (1 + eventuales + garantia + burden)
         precio_cliente, precio_integrador = calcular_precios(
             costo_total=costo_total,
             metodo=cot.metodo_precio or "gp",
