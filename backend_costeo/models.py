@@ -157,6 +157,11 @@ class Cotizacion(Base):
     observaciones = Column(String, nullable=True)
     creada_en = Column(DateTime, default=datetime.utcnow)
     precio_final = Column(Float, nullable=True)
+    items_costo = relationship(
+        "CotizacionItem",
+        back_populates="cotizacion",
+        cascade="all, delete-orphan"
+    )
     conjuntos = relationship(
         "CotizacionConjunto",
         back_populates="cotizacion",
@@ -172,4 +177,12 @@ class CotizacionConjunto(Base):
     cantidad = Column(Float, default=1)
     lista = relationship("ListaPrecioConfig", lazy="joined")
     cotizacion = relationship("Cotizacion", back_populates="conjuntos")
- 
+
+class CotizacionItem(Base):
+    __tablename__ = "cotizacion_items"
+    id = Column(Integer, primary_key=True)
+    cotizacion_id = Column(Integer, ForeignKey("cotizaciones.id"))
+    item_id = Column(Integer, ForeignKey("costos_items.id"))
+    cantidad = Column(Float, default=1)
+    item = relationship("CostoItem", lazy="joined")
+    cotizacion = relationship("Cotizacion", back_populates="items_costo")
