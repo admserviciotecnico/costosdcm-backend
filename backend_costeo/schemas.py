@@ -121,8 +121,8 @@ class CatalogoProductoResponse(BaseModel):
     observaciones: Optional[str] = None
     creada_en: datetime
     conjuntos: List[CatalogoConjuntoResponse] = []
-    model_config = ConfigDict(from_attributes=True)
     precio_final: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
  
  
 # =========================
@@ -143,8 +143,23 @@ class CotizacionConjuntoResponse(BaseModel):
     precio_integrador_conjunto: Optional[float] = None
     costo_directo_conjunto: Optional[float] = None
     model_config = ConfigDict(from_attributes=True)
- 
- 
+
+
+# ← Movida arriba para que CotizacionResponse pueda referenciarla
+class CotizacionItemResponse(BaseModel):
+    id: int
+    item_id: int
+    cantidad: float
+    nombre: Optional[str] = None
+    codigo: Optional[str] = None
+    tipo: Optional[str] = None
+    subtipo: Optional[str] = None
+    unidad: Optional[str] = None
+    costo_unit: Optional[float] = None
+    total: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CotizacionCreate(BaseModel):
     nombre: str
     cliente: str
@@ -187,19 +202,5 @@ class CotizacionResponse(BaseModel):
     items_costo: List[CotizacionItemResponse] = []
     creada_en: datetime
     conjuntos: List[CotizacionConjuntoResponse] = []
-    model_config = ConfigDict(from_attributes=True)
     precio_final: Optional[float] = None
- 
-
-class CotizacionItemResponse(BaseModel):
-    id: int
-    item_id: int
-    cantidad: float
-    nombre: Optional[str] = None
-    codigo: Optional[str] = None
-    tipo: Optional[str] = None
-    subtipo: Optional[str] = None
-    unidad: Optional[str] = None
-    costo_unit: Optional[float] = None
-    total: Optional[float] = None
     model_config = ConfigDict(from_attributes=True)
