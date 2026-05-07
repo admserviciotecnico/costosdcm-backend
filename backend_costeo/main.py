@@ -31,6 +31,7 @@ try:
         CatalogoConjunto,
         Cotizacion,
         CotizacionConjunto,
+        CotizacionItem,
     )
  
 except ModuleNotFoundError:
@@ -46,6 +47,7 @@ except ModuleNotFoundError:
         CatalogoConjunto,
         Cotizacion,
         CotizacionConjunto,
+        CotizacionItem,
     )
  
  
@@ -208,7 +210,29 @@ def construir_conjuntos_response(conjuntos):
             "costo_directo_conjunto": lista.costo_directo if lista else None,
         })
     return resultado
- 
+
+
+def construir_items_costo_response(items):
+    """Helper para construir la respuesta de ítems de costo individuales."""
+    resultado = []
+    for ci in items:
+        item = ci.item
+        if item:
+            costo_unit = item.costo_fabrica or 0
+            resultado.append({
+                "id": ci.id,
+                "item_id": ci.item_id,
+                "cantidad": ci.cantidad,
+                "nombre": item.nombre,
+                "codigo": item.codigo,
+                "tipo": item.tipo,
+                "subtipo": item.subtipo,
+                "unidad": item.unidad,
+                "costo_unit": costo_unit,
+                "total": round(costo_unit * (ci.cantidad or 0), 4),
+            })
+    return resultado
+
  
 @app.post("/api/lista-precios", response_model=ListaPrecioResponse)
 def crear_lista(data: ListaPrecioCreate, db: Session = Depends(get_db), usuario: dict = Depends(solo_admin)):
@@ -776,7 +800,6 @@ def crear_catalogo(
     ultimo = db.query(CatalogoProducto).order_by(CatalogoProducto.id.desc()).first()
     nuevo_codigo = f"CAT{(ultimo.id + 1):03d}" if ultimo else "CAT001"
  
-    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     costo_directo = 0.0
     conjuntos_data = []
     if data.conjuntos:
@@ -842,7 +865,7 @@ def crear_catalogo(
  
 @app.put("/api/catalogo/{catalogo_id}")
 def actualizar_catalogo(
-    catalogo_id: str,  # ← str, no int
+    catalogo_id: str,
     data: dict,
     db: Session = Depends(get_db),
     usuario: dict = Depends(admin_o_vendedor)
@@ -862,7 +885,7 @@ def actualizar_catalogo(
     campos = {
         "nombre", "producto_codigo", "producto_nombre", "metodo_precio",
         "gp_cliente", "gp_integrador", "markup_cliente", "markup_integrador",
-        "eventuales", "garantia", "burden", "observaciones", "precio_final"  # ← agregado
+        "eventuales", "garantia", "burden", "observaciones", "precio_final"
     }
     for campo in campos:
         if campo in data and data[campo] is not None:
@@ -910,11 +933,10 @@ def actualizar_catalogo(
  
 @app.delete("/api/catalogo/{catalogo_id}")
 def eliminar_catalogo(
-    catalogo_id: str,  # ← cambiar int por str
+    catalogo_id: str,
     db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
-    # Buscar por id numérico o por código
     try:
         prod = db.query(CatalogoProducto).filter(
             CatalogoProducto.id == int(catalogo_id)
@@ -942,13 +964,15 @@ def listar_cotizaciones(
     usuario: dict = Depends(admin_o_vendedor)
 ):
     cotizaciones = db.query(Cotizacion).options(
-        joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
+        joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista),
+        joinedload(Cotizacion.items_costo).joinedload(CotizacionItem.item),
     ).all()
  
     resultado = []
     for cot in cotizaciones:
         cot_dict = {col.name: getattr(cot, col.name) for col in cot.__table__.columns}
         cot_dict["conjuntos"] = construir_conjuntos_response(cot.conjuntos)
+        cot_dict["items_costo"] = construir_items_costo_response(cot.items_costo)
         resultado.append(cot_dict)
  
     return resultado
@@ -962,11 +986,13 @@ def obtener_cotizacion(
 ):
     try:
         cot = db.query(Cotizacion).options(
-            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
+            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista),
+            joinedload(Cotizacion.items_costo).joinedload(CotizacionItem.item),
         ).filter(Cotizacion.id == int(cotizacion_id)).first()
     except ValueError:
         cot = db.query(Cotizacion).options(
-            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista)
+            joinedload(Cotizacion.conjuntos).joinedload(CotizacionConjunto.lista),
+            joinedload(Cotizacion.items_costo).joinedload(CotizacionItem.item),
         ).filter(Cotizacion.codigo == cotizacion_id).first()
 
     if not cot:
@@ -974,6 +1000,7 @@ def obtener_cotizacion(
 
     cot_dict = {col.name: getattr(cot, col.name) for col in cot.__table__.columns}
     cot_dict["conjuntos"] = construir_conjuntos_response(cot.conjuntos)
+    cot_dict["items_costo"] = construir_items_costo_response(cot.items_costo)
     return cot_dict
  
  
@@ -986,7 +1013,6 @@ def crear_cotizacion(
     ultimo = db.query(Cotizacion).order_by(Cotizacion.id.desc()).first()
     nuevo_codigo = f"COT{(ultimo.id + 1):03d}" if ultimo else "COT001"
  
-    # ✅ FIX 2: usar costo_directo del conjunto (sin margen) como base
     costo_directo = 0.0
     conjuntos_data = []
     if data.conjuntos:
@@ -997,6 +1023,16 @@ def crear_cotizacion(
             if lista:
                 costo_directo += (lista.costo_directo or 0) * c.cantidad
                 conjuntos_data.append((c.lista_codigo, c.cantidad))
+
+    items_costo_data = []
+    if data.items_costo:
+        for it in data.items_costo:
+            costo_item = db.query(CostoItem).filter(
+                CostoItem.id == it.get("item_id")
+            ).first()
+            if costo_item:
+                costo_directo += (costo_item.costo_fabrica or 0) * it.get("cantidad", 1)
+                items_costo_data.append((it.get("item_id"), it.get("cantidad", 1)))
  
     eventuales = (data.eventuales or 0) / 100
     garantia = (data.garantia or 0) / 100
@@ -1041,6 +1077,13 @@ def crear_cotizacion(
             lista_codigo=lista_codigo,
             cantidad=cantidad,
         ))
+
+    for item_id, cantidad in items_costo_data:
+        db.add(CotizacionItem(
+            cotizacion_id=nueva.id,
+            item_id=item_id,
+            cantidad=cantidad,
+        ))
  
     registrar_cambio(db, usuario, "crear", "cotizacion", nueva.id, nueva.nombre)
     db.commit()
@@ -1048,6 +1091,7 @@ def crear_cotizacion(
  
     cot_dict = {col.name: getattr(nueva, col.name) for col in nueva.__table__.columns}
     cot_dict["conjuntos"] = construir_conjuntos_response(nueva.conjuntos)
+    cot_dict["items_costo"] = construir_items_costo_response(nueva.items_costo)
     return cot_dict
  
 
@@ -1079,24 +1123,41 @@ def actualizar_cotizacion(
         if campo in data and data[campo] is not None:
             setattr(cot, campo, data[campo])
 
-    # ✅ Mismo fix que catálogo — usar costo_directo sin margen
-    if "conjuntos" in data:
-        db.query(CotizacionConjunto).filter(
-            CotizacionConjunto.cotizacion_id == cot.id
-        ).delete()
-
+    if "conjuntos" in data or "items_costo" in data:
         costo_directo = 0.0
-        for c in data["conjuntos"]:
-            lista = db.query(ListaPrecioConfig).filter(
-                ListaPrecioConfig.codigo == c.get("lista_codigo")
-            ).first()
-            if lista:
-                costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
-            db.add(CotizacionConjunto(
-                cotizacion_id=cot.id,
-                lista_codigo=c.get("lista_codigo"),
-                cantidad=c.get("cantidad", 1),
-            ))
+
+        if "conjuntos" in data:
+            db.query(CotizacionConjunto).filter(
+                CotizacionConjunto.cotizacion_id == cot.id
+            ).delete()
+
+            for c in data["conjuntos"]:
+                lista = db.query(ListaPrecioConfig).filter(
+                    ListaPrecioConfig.codigo == c.get("lista_codigo")
+                ).first()
+                if lista:
+                    costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
+                db.add(CotizacionConjunto(
+                    cotizacion_id=cot.id,
+                    lista_codigo=c.get("lista_codigo"),
+                    cantidad=c.get("cantidad", 1),
+                ))
+
+        if "items_costo" in data:
+            db.query(CotizacionItem).filter(
+                CotizacionItem.cotizacion_id == cot.id
+            ).delete()
+            for it in data["items_costo"]:
+                costo_item = db.query(CostoItem).filter(
+                    CostoItem.id == it.get("item_id")
+                ).first()
+                if costo_item:
+                    costo_directo += (costo_item.costo_fabrica or 0) * it.get("cantidad", 1)
+                    db.add(CotizacionItem(
+                        cotizacion_id=cot.id,
+                        item_id=it.get("item_id"),
+                        cantidad=it.get("cantidad", 1),
+                    ))
 
         eventuales = (cot.eventuales or 0) / 100
         garantia = (cot.garantia or 0) / 100
@@ -1123,11 +1184,10 @@ def actualizar_cotizacion(
  
 @app.delete("/api/cotizaciones/{cotizacion_id}")
 def eliminar_cotizacion(
-    cotizacion_id: str,  # ← cambiar int por str
+    cotizacion_id: str,
     db: Session = Depends(get_db),
     usuario: dict = Depends(solo_admin)
 ):
-    # Buscar por id numérico o por código
     try:
         cot = db.query(Cotizacion).filter(
             Cotizacion.id == int(cotizacion_id)
@@ -1159,7 +1219,6 @@ def adquirir_lock(
     from sqlalchemy import text
     from datetime import timedelta
  
-    # Verificar si existe un lock activo (menos de 30 minutos)
     result = db.execute(text("""
         SELECT usuario_email, usuario_nombre, adquirido_en
         FROM edicion_locks
@@ -1173,7 +1232,6 @@ def adquirir_lock(
             detail=f"Este elemento está siendo editado por {result[1] or result[0]}"
         )
  
-    # Insertar o actualizar el lock
     db.execute(text("""
         INSERT INTO edicion_locks (entidad, entidad_id, usuario_email, usuario_nombre, adquirido_en)
         VALUES (:entidad, :entidad_id, :email, :nombre, NOW())
