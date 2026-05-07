@@ -113,6 +113,11 @@ class CatalogoProducto(Base):
     observaciones = Column(String, nullable=True)
     creada_en = Column(DateTime, default=datetime.utcnow)
     precio_final = Column(Float, nullable=True)
+    items_costo = relationship(
+    "CatalogoItem",
+    back_populates="catalogo",
+    cascade="all, delete-orphan"
+    )
     conjuntos = relationship(
         "CatalogoConjunto",
         back_populates="catalogo",
@@ -129,7 +134,15 @@ class CatalogoConjunto(Base):
     lista = relationship("ListaPrecioConfig", lazy="joined")
     catalogo = relationship("CatalogoProducto", back_populates="conjuntos")
  
- 
+class CatalogoItem(Base):
+    __tablename__ = "catalogo_items"
+    id = Column(Integer, primary_key=True)
+    catalogo_id = Column(Integer, ForeignKey("catalogo_productos.id"))
+    item_id = Column(Integer, ForeignKey("costos_items.id"))
+    cantidad = Column(Float, default=1)
+    item = relationship("CostoItem", lazy="joined")
+    catalogo = relationship("CatalogoProducto", back_populates="items_costo")
+
 # =========================
 # COTIZACIONES POR PROYECTO
 # =========================
