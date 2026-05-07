@@ -29,6 +29,7 @@ try:
         ListaPrecioItem,
         CatalogoProducto,
         CatalogoConjunto,
+        CatalogoItem,
         Cotizacion,
         CotizacionConjunto,
         CotizacionItem,
@@ -45,6 +46,7 @@ except ModuleNotFoundError:
         ListaPrecioItem,
         CatalogoProducto,
         CatalogoConjunto,
+        CatalogoItem,
         Cotizacion,
         CotizacionConjunto,
         CotizacionItem,
@@ -213,7 +215,29 @@ def construir_conjuntos_response(conjuntos):
 
 
 def construir_items_costo_response(items):
-    """Helper para construir la respuesta de ítems de costo individuales."""
+    """Helper para construir la respuesta de ítems de costo individuales (cotizaciones)."""
+    resultado = []
+    for ci in items:
+        item = ci.item
+        if item:
+            costo_unit = item.costo_fabrica or 0
+            resultado.append({
+                "id": ci.id,
+                "item_id": ci.item_id,
+                "cantidad": ci.cantidad,
+                "nombre": item.nombre,
+                "codigo": item.codigo,
+                "tipo": item.tipo,
+                "subtipo": item.subtipo,
+                "unidad": item.unidad,
+                "costo_unit": costo_unit,
+                "total": round(costo_unit * (ci.cantidad or 0), 4),
+            })
+    return resultado
+
+
+def construir_items_catalogo_response(items):
+    """Helper para construir la respuesta de ítems de costo individuales (catálogo)."""
     resultado = []
     for ci in items:
         item = ci.item
@@ -756,13 +780,15 @@ def listar_catalogo(
     usuario: dict = Depends(admin_o_vendedor)
 ):
     productos = db.query(CatalogoProducto).options(
-        joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
+        joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista),
+        joinedload(CatalogoProducto.items_costo).joinedload(CatalogoItem.item),
     ).all()
  
     resultado = []
     for prod in productos:
         prod_dict = {col.name: getattr(prod, col.name) for col in prod.__table__.columns}
         prod_dict["conjuntos"] = construir_conjuntos_response(prod.conjuntos)
+        prod_dict["items_costo"] = construir_items_catalogo_response(prod.items_costo)
         resultado.append(prod_dict)
  
     return resultado
@@ -776,11 +802,13 @@ def obtener_catalogo(
 ):
     try:
         prod = db.query(CatalogoProducto).options(
-            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
+            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista),
+            joinedload(CatalogoProducto.items_costo).joinedload(CatalogoItem.item),
         ).filter(CatalogoProducto.id == int(catalogo_id)).first()
     except ValueError:
         prod = db.query(CatalogoProducto).options(
-            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista)
+            joinedload(CatalogoProducto.conjuntos).joinedload(CatalogoConjunto.lista),
+            joinedload(CatalogoProducto.items_costo).joinedload(CatalogoItem.item),
         ).filter(CatalogoProducto.codigo == catalogo_id).first()
 
     if not prod:
@@ -788,6 +816,7 @@ def obtener_catalogo(
 
     prod_dict = {col.name: getattr(prod, col.name) for col in prod.__table__.columns}
     prod_dict["conjuntos"] = construir_conjuntos_response(prod.conjuntos)
+    prod_dict["items_costo"] = construir_items_catalogo_response(prod.items_costo)
     return prod_dict
  
  
@@ -810,6 +839,16 @@ def crear_catalogo(
             if lista:
                 costo_directo += (lista.costo_directo or 0) * c.cantidad
                 conjuntos_data.append((c.lista_codigo, c.cantidad))
+
+    items_costo_data = []
+    if data.items_costo:
+        for it in data.items_costo:
+            costo_item = db.query(CostoItem).filter(
+                CostoItem.id == it.get("item_id")
+            ).first()
+            if costo_item:
+                costo_directo += (costo_item.costo_fabrica or 0) * it.get("cantidad", 1)
+                items_costo_data.append((it.get("item_id"), it.get("cantidad", 1)))
  
     eventuales = (data.eventuales or 0) / 100
     garantia = (data.garantia or 0) / 100
@@ -853,6 +892,13 @@ def crear_catalogo(
             lista_codigo=lista_codigo,
             cantidad=cantidad,
         ))
+
+    for item_id, cantidad in items_costo_data:
+        db.add(CatalogoItem(
+            catalogo_id=nuevo.id,
+            item_id=item_id,
+            cantidad=cantidad,
+        ))
  
     registrar_cambio(db, usuario, "crear", "catalogo", nuevo.id, nuevo.nombre)
     db.commit()
@@ -860,6 +906,7 @@ def crear_catalogo(
  
     prod_dict = {col.name: getattr(nuevo, col.name) for col in nuevo.__table__.columns}
     prod_dict["conjuntos"] = construir_conjuntos_response(nuevo.conjuntos)
+    prod_dict["items_costo"] = construir_items_catalogo_response(nuevo.items_costo)
     return prod_dict
  
  
@@ -891,23 +938,42 @@ def actualizar_catalogo(
         if campo in data and data[campo] is not None:
             setattr(prod, campo, data[campo])
 
-    if "conjuntos" in data:
-        db.query(CatalogoConjunto).filter(
-            CatalogoConjunto.catalogo_id == prod.id
-        ).delete()
-
+    if "conjuntos" in data or "items_costo" in data:
         costo_directo = 0.0
-        for c in data["conjuntos"]:
-            lista = db.query(ListaPrecioConfig).filter(
-                ListaPrecioConfig.codigo == c.get("lista_codigo")
-            ).first()
-            if lista:
-                costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
-            db.add(CatalogoConjunto(
-                catalogo_id=prod.id,
-                lista_codigo=c.get("lista_codigo"),
-                cantidad=c.get("cantidad", 1),
-            ))
+
+        if "conjuntos" in data:
+            db.query(CatalogoConjunto).filter(
+                CatalogoConjunto.catalogo_id == prod.id
+            ).delete()
+
+            for c in data["conjuntos"]:
+                lista = db.query(ListaPrecioConfig).filter(
+                    ListaPrecioConfig.codigo == c.get("lista_codigo")
+                ).first()
+                if lista:
+                    costo_directo += (lista.costo_directo or 0) * c.get("cantidad", 1)
+                db.add(CatalogoConjunto(
+                    catalogo_id=prod.id,
+                    lista_codigo=c.get("lista_codigo"),
+                    cantidad=c.get("cantidad", 1),
+                ))
+
+        if "items_costo" in data:
+            db.query(CatalogoItem).filter(
+                CatalogoItem.catalogo_id == prod.id
+            ).delete()
+
+            for it in data["items_costo"]:
+                costo_item = db.query(CostoItem).filter(
+                    CostoItem.id == it.get("item_id")
+                ).first()
+                if costo_item:
+                    costo_directo += (costo_item.costo_fabrica or 0) * it.get("cantidad", 1)
+                    db.add(CatalogoItem(
+                        catalogo_id=prod.id,
+                        item_id=it.get("item_id"),
+                        cantidad=it.get("cantidad", 1),
+                    ))
 
         eventuales = (prod.eventuales or 0) / 100
         garantia = (prod.garantia or 0) / 100
