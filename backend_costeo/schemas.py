@@ -95,11 +95,24 @@ class CatalogoProductoCreate(BaseModel):
     eventuales: Optional[float] = 0
     garantia: Optional[float] = 0
     burden: Optional[float] = 0
+    items_costo: Optional[List[dict]] = None
     observaciones: Optional[str] = None
     conjuntos: Optional[List[CatalogoConjuntoItem]] = None
     precio_final: Optional[float] = None
  
- 
+class CatalogoItemResponse(BaseModel):
+    id: int
+    item_id: int
+    cantidad: float
+    nombre: Optional[str] = None
+    codigo: Optional[str] = None
+    tipo: Optional[str] = None
+    subtipo: Optional[str] = None
+    unidad: Optional[str] = None
+    costo_unit: Optional[float] = None
+    total: Optional[float] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class CatalogoProductoResponse(BaseModel):
     id: int
     codigo: Optional[str] = None
@@ -120,11 +133,11 @@ class CatalogoProductoResponse(BaseModel):
     precio_integrador: Optional[float] = None
     observaciones: Optional[str] = None
     creada_en: datetime
+    items_costo: List[CatalogoItemResponse] = []
     conjuntos: List[CatalogoConjuntoResponse] = []
     precio_final: Optional[float] = None
     model_config = ConfigDict(from_attributes=True)
- 
- 
+
 # =========================
 # COTIZACIONES POR PROYECTO
 # =========================
