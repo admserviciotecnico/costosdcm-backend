@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  tecnico
+}
+
+enum OrderStatus {
+  presupuesto_generado
+  oc_recibida
+  facturado
+  pago_recibido
+  documentacion_enviada
+  documentacion_aprobada
+  service_programado
+  en_ejecucion
+  completado
+  cancelado
+}
+
+enum Priority {
+  baja
+  media
+  alta
+}
+
+enum EquipmentStatus {
+  operativo
+  mantenimiento
+  fuera_servicio
+  en_revision
+}
+
+model Role {
+  id    String   @id @default(cuid())
+  name  UserRole @unique
+  users User[]
+}
+
+model User {
+  id             String                     @id @default(cuid())
+  first_name     String
+  last_name      String
+  email          String                     @unique
+  password       String
+  phone          String?
+  active         Boolean                    @default(true)
+  role_id        String
+  role           Role                       @relation(fields: [role_id], references: [id])
+  orders         ServiceOrderTechnician[]
+  history        ServiceOrderStatusHistory[]
+  notifications  Notification[]
+  created_at     DateTime                   @default(now())
+  updated_at     DateTime                   @updatedAt
+}
+
+model Client {
+  id                              String       @id @default(cuid())
+  nombre_empresa                  String
+  direccion                       String?
+  telefono                        String?
+  email                           String
+  persona_contacto                String?
+  fecha_vencimiento_documentacion DateTime?
+  observaciones                   String?
+  is_active                       Boolean      @default(true)
+  deleted_at                      DateTime?
+  equipments                      Equipment[]
+  service_orders                  ServiceOrder[]
+  created_at                      DateTime     @default(now())
+  updated_at                      DateTime     @updatedAt
+
+  @@index([is_active, deleted_at])
+}
+
+model Equipment {
+  id               String          @id @default(cuid())
+  client_id        String
+  client           Client          @relation(fields: [client_id], references: [id])
+  tipo_equipo      String
+  modelo           String?
+  numero_serie     String          @unique
+  ubicacion_planta String?
+  estado_actual    EquipmentStatus @default(operativo)
+  is_active        Boolean         @default(true)
+  deleted_at       DateTime?
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  @@index([client_id])
+  @@index([is_active, deleted_at])
+}
+
+model ServiceOrder {
+  id                       String                      @id @default(cuid())
+  client_id                String
+  client                   Client                      @relation(fields: [client_id], references: [id])
+  estado                   OrderStatus                 @default(presupuesto_generado)
+  prioridad                Priority                    @default(media)
+  prioridad_peso           Int                         @default(2)
+  fecha_programada         DateTime?
+  direccion_service        String?
+  contacto_planta          String?
+  telefono_contacto_planta String?
+  observaciones            String?
+  observaciones_cierre     String?
+  is_active                Boolean                     @default(true)
+  deleted_at               DateTime?
+  technicians              ServiceOrderTechnician[]
+  status_history           ServiceOrderStatusHistory[]
+  attachments              Attachment[]
+  notifications            Notification[]
+  created_at               DateTime                    @default(now())
+  updated_at               DateTime                    @updatedAt
+
+  @@index([fecha_programada])
+  @@index([estado])
+  @@index([client_id])
+  @@index([is_active, deleted_at, estado, prioridad, fecha_programada])
+}
+
+model ServiceOrderTechnician {
+  id               String       @id @default(cuid())
+  service_order_id String
+  technician_id    String
+  fecha_asignacion DateTime     @default(now())
+  asignado_por     String?
+  service_order    ServiceOrder @relation(fields: [service_order_id], references: [id], onDelete: Cascade)
+  technician       User         @relation(fields: [technician_id], references: [id], onDelete: Cascade)
+
+  @@unique([service_order_id, technician_id])
+  @@index([service_order_id])
+  @@index([technician_id])
+}
+
+model ServiceOrderStatusHistory {
+  id               String       @id @default(cuid())
+  service_order_id String
+  estado_anterior  OrderStatus?
+  estado_nuevo     OrderStatus
+  campo_modificado String?
+  valor_anterior   String?
+  valor_nuevo      String?
+  comentario       String?
+  usuario_id       String
+  created_at       DateTime     @default(now())
+  service_order    ServiceOrder @relation(fields: [service_order_id], references: [id], onDelete: Cascade)
+  usuario          User         @relation(fields: [usuario_id], references: [id])
+
+  @@index([service_order_id, created_at])
+  @@index([campo_modificado])
+}
+
+model Notification {
+  id               String        @id @default(cuid())
+  user_id          String
+  service_order_id String?
+  title            String
+  description      String
+  read             Boolean       @default(false)
+  created_at       DateTime      @default(now())
+  user             User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  service_order    ServiceOrder? @relation(fields: [service_order_id], references: [id], onDelete: SetNull)
+}
+
+model Attachment {
+  id               String       @id @default(cuid())
+  service_order_id String
+  file_name        String
+  file_url         String
+  mime_type        String?
+  uploaded_by      String
+  created_at       DateTime     @default(now())
+  service_order    ServiceOrder @relation(fields: [service_order_id], references: [id], onDelete: Cascade)
+
+  @@index([service_order_id])
+}
