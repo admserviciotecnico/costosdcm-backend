@@ -172,7 +172,27 @@ def guardar_costeo_alias(data: ListaPrecioCreate, db: Session = Depends(get_db),
         "id": nueva.id,
     }
  
- 
+@app.post("/api/auth/recuperar-password")
+async def recuperar_password(datos: dict):
+    email = datos.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email requerido")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{os.getenv('SUPABASE_URL')}/auth/v1/recover",
+            headers={
+                "apikey": os.getenv("SUPABASE_KEY"),
+                "Content-Type": "application/json"
+            },
+            json={"email": email}
+        )
+
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=400, detail="Error al enviar email de recuperación")
+
+    return {"ok": True, "mensaje": "Si el email existe, recibirás un enlace de recuperación"}
+
 @app.get("/api/costos/{item_id}/historial")
 def historial_costos(item_id: int, db: Session = Depends(get_db), usuario: dict = Depends(admin_o_vendedor)):
     return (
